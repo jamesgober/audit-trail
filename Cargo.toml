@@ -1,0 +1,58 @@
+﻿[package]
+name = "audit-trail"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.75"
+readme = "README.md"
+license = "Apache-2.0 OR MIT"
+
+authors = [
+    "James Gober <me@jamesgober.com>"
+]
+
+description = "Structured audit logging with tamper-evident chaining. Every write produces a cryptographically linked record (hash chain). Compliance-grade output (who, what, when, where, result). Pluggable backends. Foundation for HIPAA, SOC 2, and PCI-DSS compliance."
+
+keywords = [
+    "audit",
+    "compliance",
+    "tamper-evident",
+    "hash-chain",
+    "rust"
+]
+
+categories = [
+    "cryptography",
+    "rust-patterns"
+]
+
+documentation = "https://docs.rs/audit-trail"
+repository    = "https://github.com/jamesgober/audit-trail"
+homepage      = "https://github.com/jamesgober/audit-trail"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[lib]
+name = "audit_trail"
+path = "src/lib.rs"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+
+[dev-dependencies]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
+[profile.bench]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = true

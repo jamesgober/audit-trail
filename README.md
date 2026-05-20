@@ -27,8 +27,53 @@ Structured audit logging with tamper-evident chaining. Every write produces a cr
 
 ```toml
 [dependencies]
-audit-trail = "0.2"
+audit-trail = { version = "0.4", features = ["sha2"] }
 ```
+
+```rust,no_run
+use audit_trail::{
+    Action, Actor, Chain, Clock, MemorySink, Outcome, Sha256Hasher, Target, Timestamp, Verifier,
+};
+
+// Plug in any monotonic time source.
+struct SystemClock;
+impl Clock for SystemClock {
+    fn now(&self) -> Timestamp {
+        let ns = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0);
+        Timestamp::from_nanos(ns)
+    }
+}
+
+let mut chain = Chain::new(Sha256Hasher::new(), MemorySink::new(), SystemClock);
+
+chain.append(
+    Actor::new("user-42"),
+    Action::new("record.delete"),
+    Target::new("record:1337"),
+    Outcome::Denied,
+).expect("append");
+
+// Later, prove the chain is untampered.
+let (_, sink, _) = chain.into_parts();
+let mut verifier = Verifier::new(Sha256Hasher::new());
+for r in sink.records() {
+    verifier.verify(&r.as_record()).expect("chain must verify");
+}
+```
+
+### Features
+
+| Feature   | Default | What it adds                                      |
+|-----------|---------|---------------------------------------------------|
+| `std`     | yes     | `std::error::Error` impls; implies `alloc`        |
+| `alloc`   | yes (via `std`) | `OwnedRecord`, `MemorySink`                  |
+| `sha2`    | no      | `Sha256Hasher` (reference SHA-256 implementation) |
+
+For `no_std` use `default-features = false` and supply your own hasher,
+sink, and clock.
 
 ---
 

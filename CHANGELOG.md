@@ -19,6 +19,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-05-20
+
+### Added
+
+- New `alloc` feature flag. `std` now implies `alloc`. `OwnedRecord` and
+  `MemorySink` are available with either `alloc` or `std`.
+- New `sha2` feature flag. Adds `Sha256Hasher`, a reference SHA-256
+  implementation backed by the `sha2` crate (`default-features = false`).
+- `OwnedRecord` — owned counterpart to `Record<'a>` with `String`-backed
+  fields. `OwnedRecord::from_record`, `OwnedRecord::as_record`, and
+  `From<&Record<'_>>` for ergonomic round-tripping.
+- `MemorySink` — in-memory reference `Sink` backed by `Vec<OwnedRecord>`.
+  Exposes `new`, `with_capacity`, `len`, `is_empty`, `records`,
+  `into_records`, `clear`.
+- `Sha256Hasher` — reference `Hasher` for the most common compliance
+  primitive (FIPS 180-4 SHA-256). 32-byte output, allocation-free, reuses
+  internal state across records via `finalize_reset`.
+- `tests/integration.rs` — end-to-end real-SHA-256 chain + verifier
+  roundtrip (4 tests) covering clean verification, mutation detection,
+  link tampering, and `OwnedRecord` round-trip.
+- README quick-start now shows a real end-to-end usage example with
+  `Sha256Hasher` + `MemorySink` + `Verifier`, plus a feature matrix.
+
+### Changed
+
+- README quick-start version bumped from `"0.2"` to
+  `{ version = "0.4", features = ["sha2"] }`.
+- `[features]` table: `default = ["std"]`, `std = ["alloc"]`,
+  new `alloc = []`, new `sha2 = ["dep:sha2"]`.
+- `docs.rs` metadata already builds with `all-features = true` — the new
+  feature-gated items render under their feature labels via
+  `#[cfg_attr(docsrs, doc(cfg(feature = "...")))]`.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.4.0
+
+---
+
 ## [0.3.0] - 2026-05-20
 
 ### Added
@@ -53,7 +91,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Node 20 deprecation annotation. `actions/checkout@v5` and
   `actions/setup-node@v5` were already on Node 24.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.3.0
 
 ---

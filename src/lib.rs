@@ -17,8 +17,18 @@
 //! - [`Clock`] — pluggable time source.
 //! - [`Verifier`] — replays a chain and proves it is untampered.
 //!
-//! `audit-trail` does not bundle a concrete hasher, sink, or clock in the
-//! foundation milestone. Callers wire concrete implementations in.
+//! ## Optional features
+//!
+//! - `std` (default) — enables `std`-dependent items and `std::error::Error`
+//!   impls. Implies `alloc`.
+//! - `alloc` — enables owned-record and in-memory sink types
+//!   ([`OwnedRecord`], [`MemorySink`]).
+//! - `sha2` — enables the reference [`Sha256Hasher`] backed by the `sha2`
+//!   crate.
+//!
+//! Without any optional features, the crate ships traits, the `Chain`,
+//! and the `Verifier` only — callers supply their own hasher, sink, and
+//! clock.
 //!
 //! ## Design principles
 //!
@@ -50,6 +60,9 @@
 #![deny(clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::missing_safety_doc)]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 /// Crate version string, populated by Cargo at build time.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -62,6 +75,14 @@ mod record;
 mod sink;
 mod verify;
 
+#[cfg(feature = "alloc")]
+mod owned;
+#[cfg(feature = "alloc")]
+mod sinks;
+
+#[cfg(feature = "sha2")]
+mod hashers;
+
 pub use chain::Chain;
 pub use clock::{Clock, Timestamp};
 pub use error::{Error, Result, SinkError};
@@ -69,3 +90,15 @@ pub use hash::{Digest, HASH_LEN, Hasher};
 pub use record::{Action, Actor, Outcome, Record, RecordId, Target};
 pub use sink::Sink;
 pub use verify::Verifier;
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use owned::OwnedRecord;
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use sinks::MemorySink;
+
+#[cfg(feature = "sha2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sha2")))]
+pub use hashers::Sha256Hasher;

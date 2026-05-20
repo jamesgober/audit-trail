@@ -1,6 +1,6 @@
 ﻿[package]
 name = "audit-trail"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.85"
 readme = "README.md"
@@ -39,9 +39,12 @@ path = "src/lib.rs"
 
 [features]
 default = ["std"]
-std = []
+std = ["alloc"]
+alloc = []
+sha2 = ["dep:sha2"]
 
 [dependencies]
+sha2 = { version = "0.10", default-features = false, optional = true }
 
 [dev-dependencies]
 

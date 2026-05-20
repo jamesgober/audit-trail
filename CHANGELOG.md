@@ -19,6 +19,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2026-05-20
+
+**Stable release.** Public API and on-disk codec format are
+semver-frozen for the `1.x` line. No code changes since `v0.9.0` —
+this release is the audit-closing milestone declaration.
+
+### Changed
+
+- Crate version bumped to `1.0.0`.
+- README **Status** section now declares `1.x` API stability, wire
+  stability (`FORMAT_VERSION = 0x01`), and MSRV stability (Rust 1.85).
+- README quick-start snippet uses the `"1"` major-version constraint:
+  `audit-trail = { version = "1", features = ["sha2"] }`.
+
+### Stability promises
+
+- **API:** every public item in the `1.0.0` rustdoc is stable for
+  `1.x`. Additions are allowed; renames, removals, and signature
+  changes are reserved for `2.0`.
+- **Wire format:** any `1.x` reader decodes any `1.x` writer's
+  output. The 16-byte file header's `FORMAT_VERSION = 0x01` is
+  reserved for the current encoding; a future incompatible format
+  would bump it.
+- **MSRV:** Rust 1.85, fixed for `1.x`.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/jamesgober/audit-trail/releases/tag/v1.0.0
+
+---
+
 ## [0.9.0] - 2026-05-20
 
 **Feature freeze.** Pre-1.0 audit pass. No new public features; no
@@ -60,7 +90,6 @@ existing public item changed signature, was renamed, or was removed.
 - Nothing user-visible. The audit pass tightened internal
   documentation and tests without changing any public behaviour.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.9.0
 
 ---

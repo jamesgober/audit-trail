@@ -107,20 +107,23 @@ Feature freeze. Quality focus.
 
 ---
 
-## Phase 0.9.x - Audit fixes
+## Phase 0.9.x - Audit fixes (skipped)
 
-- [ ] All 0.9.0 blockers resolved
-- [ ] No new features
-- [ ] Final benchmarks recorded
-- [ ] Final API freeze
+The `v0.9.0` audit closed cleanly — no audit findings required a
+`0.9.x` follow-up. Proceeded directly to `1.0.0`.
+
+- [x] All 0.9.0 blockers resolved (no blockers found)
+- [x] No new features (0.9.0 was feature-frozen and stayed that way)
+- [x] Final benchmarks recorded (`.dev/benchmarks/v0.9.0-baseline.md`)
+- [x] Final API freeze
 
 ---
 
-## Phase 1.0.0 - Stable release
+## Phase 1.0.0 - Stable release (done; tag + publish pending)
 
-- [ ] All 0.9.x findings resolved
-- [ ] Final API freeze
-- [ ] Final benchmarks captured
-- [ ] `.dev/release/v1.0.0.md` written
-- [ ] Tag `v1.0.0` on main
-- [ ] Publish to crates.io
+- [x] All 0.9.x findings resolved (none to resolve)
+- [x] Final API freeze
+- [x] Final benchmarks captured
+- [x] `.dev/release/v1.0.0.md` written
+- [ ] Tag `v1.0.0` on main (pending CI green on this commit)
+- [ ] Publish to crates.io (pending tag)

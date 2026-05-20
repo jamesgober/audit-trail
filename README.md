@@ -16,16 +16,6 @@
 
 <p align="center">Cryptographically chained records (who, what, when, where, result). Compliance-grade output for HIPAA, SOC 2, PCI-DSS. Pluggable backends.</p>
 
-## Status
-
-**`v0.9.0` — feature freeze.** Pre-1.0 audit pass complete: every public
-item documented and tested, every error variant exercised, no
-`unwrap`/`expect`/`unsafe` in shipping code, on-disk format declared
-stable. `1.0.0` will ship after the cross-platform CI matrix is green
-on this commit. See [`.dev/release/v0.9.0.md`](.dev/release/v0.9.0.md) for the audit summary
-and [`.dev/benchmarks/v0.9.0-baseline.md`](.dev/benchmarks/v0.9.0-baseline.md)
-for the captured performance baseline.
-
 ## What it does
 
 Structured audit logging with tamper-evident chaining. Every write produces a cryptographically linked record (hash chain). Compliance-grade output (who, what, when, where, result). Pluggable backends. Foundation for HIPAA, SOC 2, and PCI-DSS compliance.
@@ -36,10 +26,10 @@ Structured audit logging with tamper-evident chaining. Every write produces a cr
 
 ```toml
 [dependencies]
-audit-trail = { version = "0.9", features = ["sha2"] }
+audit-trail = { version = "1", features = ["sha2"] }
 ```
 
-```rust,no_run
+```rust
 use audit_trail::{
     Action, Actor, Chain, MemorySink, Outcome, Sha256Hasher, SystemClock, Target, Verifier,
 };
@@ -63,7 +53,7 @@ for r in sink.records() {
 
 ### Persisting to a file
 
-```rust,no_run
+```rust
 use audit_trail::{Chain, FileSink, FileReader, Sha256Hasher, SystemClock, Verifier};
 
 let sink = FileSink::open_or_create("audit.log").expect("open");

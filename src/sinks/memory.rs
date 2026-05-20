@@ -1,4 +1,4 @@
-//! Reference [`Sink`] implementations. Requires the `alloc` feature.
+//! In-memory reference [`Sink`]. Requires the `alloc` feature.
 
 use alloc::vec::Vec;
 

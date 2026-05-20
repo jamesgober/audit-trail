@@ -16,13 +16,17 @@
 //! - [`Sink`] — pluggable backend that persists each record.
 //! - [`Clock`] — pluggable time source.
 //! - [`Verifier`] — replays a chain and proves it is untampered.
+//! - [`codec`] — stable binary record encoding (`alloc` feature).
+//! - [`FileSink`] / [`FileReader`] — append-only file persistence
+//!   (`std` feature).
 //!
 //! ## Optional features
 //!
-//! - `std` (default) — enables `std`-dependent items and `std::error::Error`
-//!   impls. Implies `alloc`.
+//! - `std` (default) — enables `std`-dependent items ([`FileSink`],
+//!   [`FileReader`]) and `std::error::Error` impls. Implies `alloc`.
 //! - `alloc` — enables owned-record and in-memory sink types
-//!   ([`OwnedRecord`], [`MemorySink`]).
+//!   ([`OwnedRecord`], [`MemorySink`]) plus the [`codec`] module for
+//!   serialising records to bytes.
 //! - `sha2` — enables the reference [`Sha256Hasher`] backed by the `sha2`
 //!   crate.
 //!
@@ -76,9 +80,13 @@ mod sink;
 mod verify;
 
 #[cfg(feature = "alloc")]
+pub mod codec;
+#[cfg(feature = "alloc")]
 mod owned;
 #[cfg(feature = "alloc")]
 mod sinks;
+#[cfg(feature = "std")]
+mod readers;
 
 #[cfg(feature = "sha2")]
 mod hashers;
@@ -98,6 +106,14 @@ pub use owned::OwnedRecord;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use sinks::MemorySink;
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use readers::FileReader;
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use sinks::FileSink;
 
 #[cfg(feature = "sha2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sha2")))]

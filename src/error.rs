@@ -58,6 +58,16 @@ pub enum Error {
     /// A record's id is not the expected next id in the chain. Carries the
     /// id that was found.
     IdMismatch(RecordId),
+    /// Input ended before a complete record could be decoded.
+    Truncated,
+    /// Encoded bytes are present but do not parse as a valid record
+    /// (bad magic, bad version, invalid UTF-8, length-prefix mismatch, …).
+    InvalidFormat,
+    /// Underlying I/O failure (only emitted by `std`-gated readers/sinks).
+    /// Detail is suppressed to keep [`Error`] both `Copy` and `no_std`-safe;
+    /// callers needing the full [`std::io::Error`] should use the
+    /// constructor methods that return [`std::io::Result`] directly.
+    Io,
 }
 
 impl fmt::Display for Error {
@@ -70,6 +80,9 @@ impl fmt::Display for Error {
             Self::HashMismatch(id) => write!(f, "audit hash mismatch at record {}", id.as_u64()),
             Self::LinkMismatch(id) => write!(f, "audit link mismatch at record {}", id.as_u64()),
             Self::IdMismatch(id) => write!(f, "audit id mismatch at record {}", id.as_u64()),
+            Self::Truncated => f.write_str("audit input truncated"),
+            Self::InvalidFormat => f.write_str("audit input invalid format"),
+            Self::Io => f.write_str("audit i/o failure"),
         }
     }
 }

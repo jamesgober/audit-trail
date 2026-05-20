@@ -19,6 +19,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-05-20
+
+### Added
+
+- `codec` module (feature `alloc`) — stable binary record encoding.
+  - `FORMAT_MAGIC` (`b"AUDTRAIL"`), `FORMAT_VERSION` (`0x01`),
+    `FILE_HEADER_LEN` constants.
+  - `write_file_header`, `verify_file_header` for the 16-byte file
+    header.
+  - `encode_record`, `decode_record` for length-prefixed record frames.
+- `FileSink` (feature `std`) — append-only file-backed `Sink`.
+  - `FileSink::open_or_create` writes the header on a fresh file,
+    validates it on an existing file, and positions at end-of-file for
+    appends.
+  - `FileSink::new`, `FileSink::flush`, `FileSink::into_writer` for
+    manual writer management.
+- `FileReader` (feature `std`) — `Iterator<Item = Result<OwnedRecord>>`
+  over a chain file. Validates the header lazily on the first call to
+  `next()`, terminates cleanly on EOF, terminates on the first decode
+  error.
+- `Error::Truncated`, `Error::InvalidFormat`, `Error::Io` — new
+  `#[non_exhaustive]`-safe variants for codec and I/O failures.
+- `tests/codec.rs` — 11 round-trip and error-path tests covering record
+  encode/decode, file header, truncated input, bad magic, bad version,
+  bad UTF-8, invalid outcome byte, multi-record streams, empty fields.
+- `tests/file_sink.rs` — 4 end-to-end tests: round-trip with verifier,
+  reopen + resume across restart, bad-header rejection, mid-record
+  truncation detection.
+- README quick-start updated with a file-persistence example and a
+  feature-matrix update.
+
+### Changed
+
+- `src/sinks.rs` restructured into `src/sinks/{mod, memory, file}.rs`
+  to make room for `FileSink` alongside `MemorySink`. The `MemorySink`
+  public API is unchanged.
+- New `src/readers/{mod, file}.rs` module for streaming readers.
+- README quick-start version bumped from `"0.4"` to `"0.5"`.
+- Crate version bumped to `0.5.0`.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.5.0
+
+---
+
 ## [0.4.0] - 2026-05-20
 
 ### Added
@@ -52,7 +97,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   feature-gated items render under their feature labels via
   `#[cfg_attr(docsrs, doc(cfg(feature = "...")))]`.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.4.0
 
 ---

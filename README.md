@@ -27,7 +27,7 @@ Structured audit logging with tamper-evident chaining. Every write produces a cr
 
 ```toml
 [dependencies]
-audit-trail = { version = "0.4", features = ["sha2"] }
+audit-trail = { version = "0.5", features = ["sha2"] }
 ```
 
 ```rust,no_run
@@ -64,13 +64,35 @@ for r in sink.records() {
 }
 ```
 
+### Persisting to a file
+
+```rust,no_run
+use audit_trail::{Chain, FileSink, FileReader, Sha256Hasher, Verifier};
+# struct C; impl audit_trail::Clock for C { fn now(&self) -> audit_trail::Timestamp { audit_trail::Timestamp::from_nanos(0) } }
+# let clock = C;
+let sink = FileSink::open_or_create("audit.log").expect("open");
+let mut chain = Chain::new(Sha256Hasher::new(), sink, clock);
+// ... chain.append(...) ...
+
+// Replay and verify the on-disk log.
+let mut verifier = Verifier::new(Sha256Hasher::new());
+for record in FileReader::open("audit.log").expect("open") {
+    let r = record.expect("decode");
+    verifier.verify(&r.as_record()).expect("verify");
+}
+```
+
+`FileSink` writes a versioned 16-byte header on a fresh file, then
+length-prefixed records using the stable [`codec`] encoding. Reopening
+the same path appends after validating the header.
+
 ### Features
 
-| Feature   | Default | What it adds                                      |
-|-----------|---------|---------------------------------------------------|
-| `std`     | yes     | `std::error::Error` impls; implies `alloc`        |
-| `alloc`   | yes (via `std`) | `OwnedRecord`, `MemorySink`                  |
-| `sha2`    | no      | `Sha256Hasher` (reference SHA-256 implementation) |
+| Feature   | Default | What it adds                                              |
+|-----------|---------|-----------------------------------------------------------|
+| `std`     | yes     | `FileSink`, `FileReader`, `std::error::Error` impls. Implies `alloc`. |
+| `alloc`   | yes (via `std`) | `OwnedRecord`, `MemorySink`, `codec` module       |
+| `sha2`    | no      | `Sha256Hasher` (reference SHA-256 implementation)         |
 
 For `no_std` use `default-features = false` and supply your own hasher,
 sink, and clock.

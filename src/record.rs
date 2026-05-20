@@ -206,6 +206,11 @@ impl<'a> Record<'a> {
     /// The crate's [`crate::Chain`] is normally responsible for producing
     /// records. This constructor is exposed so that custom storage layers
     /// and verifiers can reconstruct records when reading them back.
+    // `#[allow(clippy::too_many_arguments)]` is justified: a `Record` is
+    // exactly the 5W tuple (`Actor`, `Action`, `Target`, `Outcome`,
+    // `Timestamp`) plus chain links (`id`, `prev_hash`, `hash`). All eight
+    // are required; grouping them into a builder would obscure the data
+    // shape and only displace the argument count one call away.
     #[allow(clippy::too_many_arguments)]
     #[inline]
     pub const fn new(
@@ -289,5 +294,70 @@ impl<'a> Record<'a> {
     #[inline]
     pub const fn hash(&self) -> Digest {
         self.hash
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::clock::Timestamp;
+    use crate::hash::{Digest, HASH_LEN};
+
+    #[test]
+    fn record_id_genesis_is_zero() {
+        assert_eq!(RecordId::GENESIS.as_u64(), 0);
+        assert_eq!(RecordId::from_u64(0), RecordId::GENESIS);
+    }
+
+    #[test]
+    fn outcome_as_u8_is_stable() {
+        // These numeric encodings are part of the on-disk codec format and
+        // must not change between releases.
+        assert_eq!(Outcome::Success.as_u8(), 0);
+        assert_eq!(Outcome::Failure.as_u8(), 1);
+        assert_eq!(Outcome::Denied.as_u8(), 2);
+        assert_eq!(Outcome::Error.as_u8(), 3);
+    }
+
+    #[test]
+    fn record_accessors_return_constructor_values() {
+        let r = Record::new(
+            RecordId::from_u64(42),
+            Timestamp::from_nanos(1_700_000_000),
+            Actor::new("user-1"),
+            Action::new("user.login"),
+            Target::new("session:abc"),
+            Outcome::Success,
+            Digest::from_bytes([0xAA; HASH_LEN]),
+            Digest::from_bytes([0xBB; HASH_LEN]),
+        );
+        assert_eq!(r.id().as_u64(), 42);
+        assert_eq!(r.timestamp().as_nanos(), 1_700_000_000);
+        assert_eq!(r.actor().as_str(), "user-1");
+        assert_eq!(r.action().as_str(), "user.login");
+        assert_eq!(r.target().as_str(), "session:abc");
+        assert_eq!(r.outcome(), Outcome::Success);
+        assert_eq!(r.prev_hash().as_bytes(), &[0xAA; HASH_LEN]);
+        assert_eq!(r.hash().as_bytes(), &[0xBB; HASH_LEN]);
+    }
+
+    #[test]
+    fn record_with_hash_swaps_only_the_hash_field() {
+        let r = Record::new(
+            RecordId::GENESIS,
+            Timestamp::EPOCH,
+            Actor::new("a"),
+            Action::new("x"),
+            Target::new("t"),
+            Outcome::Success,
+            Digest::ZERO,
+            Digest::ZERO,
+        );
+        let new_hash = Digest::from_bytes([0xCC; HASH_LEN]);
+        let r2 = r.with_hash(new_hash);
+        assert_eq!(r2.hash(), new_hash);
+        assert_eq!(r2.id(), r.id());
+        assert_eq!(r2.actor(), r.actor());
+        assert_eq!(r2.prev_hash(), r.prev_hash());
     }
 }

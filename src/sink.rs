@@ -36,5 +36,16 @@ pub trait Sink {
     /// The record is passed by reference because its string fields are
     /// borrowed from the caller. A sink that needs to retain the record past
     /// the call must copy or encode the relevant bytes before returning.
+    ///
+    /// # Errors
+    ///
+    /// Implementations return [`SinkError`] when the underlying backend
+    /// cannot accept the record. [`Chain::append`] wraps that error as
+    /// [`Error::Sink`] and propagates it without advancing the chain's
+    /// internal state, so a failed write leaves the chain in a clean
+    /// "as-if-the-call-never-happened" state and the caller can retry.
+    ///
+    /// [`Chain::append`]: crate::Chain::append
+    /// [`Error::Sink`]: crate::Error::Sink
     fn write(&mut self, record: &Record<'_>) -> core::result::Result<(), SinkError>;
 }

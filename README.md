@@ -16,6 +16,15 @@
 
 <p align="center">Cryptographically chained records (who, what, when, where, result). Compliance-grade output for HIPAA, SOC 2, PCI-DSS. Pluggable backends.</p>
 
+## Status
+
+**`v0.9.0` — feature freeze.** Pre-1.0 audit pass complete: every public
+item documented and tested, every error variant exercised, no
+`unwrap`/`expect`/`unsafe` in shipping code, on-disk format declared
+stable. `1.0.0` will ship after the cross-platform CI matrix is green
+on this commit. See [`.dev/release/v0.9.0.md`](.dev/release/v0.9.0.md) for the audit summary
+and [`.dev/benchmarks/v0.9.0-baseline.md`](.dev/benchmarks/v0.9.0-baseline.md)
+for the captured performance baseline.
 
 ## What it does
 
@@ -27,7 +36,7 @@ Structured audit logging with tamper-evident chaining. Every write produces a cr
 
 ```toml
 [dependencies]
-audit-trail = { version = "0.7", features = ["sha2"] }
+audit-trail = { version = "0.9", features = ["sha2"] }
 ```
 
 ```rust,no_run

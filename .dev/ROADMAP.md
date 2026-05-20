@@ -48,62 +48,62 @@ Skill areas in scope:
 
 ---
 
-## Phase 0.9.0 - Hardening + Audit
+## Phase 0.9.0 - Hardening + Audit (done; CI re-validation pending)
 
 Feature freeze. Quality focus.
 
 ### Audit checklist (mandatory)
 
 #### Feature completeness
-- [ ] Every roadmap item delivered
-- [ ] Every README claim verified
+- [x] Every roadmap item delivered
+- [x] Every README claim verified
 
 #### Code cleanliness
-- [ ] No dead code
-- [ ] No commented-out code
-- [ ] No TODO/FIXME without tracking issue
-- [ ] No `#[allow(...)]` without justification
+- [x] No dead code
+- [x] No commented-out code
+- [x] No TODO/FIXME without tracking issue
+- [x] No `#[allow(...)]` without justification
 
 #### Error hardening
-- [ ] Every public function: all error paths documented
-- [ ] Every error variant: documented + tested
-- [ ] No panics in shipping code paths
-- [ ] Error messages actionable
+- [x] Every public function: all error paths documented
+- [x] Every error variant: documented + tested
+- [x] No panics in shipping code paths
+- [x] Error messages actionable
 
 #### API stability
-- [ ] Every public item reviewed for 1.0
-- [ ] Sealed traits where appropriate
-- [ ] `#[non_exhaustive]` on growth-likely enums
+- [x] Every public item reviewed for 1.0
+- [x] Sealed traits where appropriate (none — pluggability is the point)
+- [x] `#[non_exhaustive]` on growth-likely enums
 
 #### Documentation
-- [ ] Every public item: rustdoc with example
-- [ ] README accurate
-- [ ] CHANGELOG complete
-- [ ] `cargo doc` zero warnings
+- [x] Every public item: rustdoc with example
+- [x] README accurate
+- [x] CHANGELOG complete
+- [x] `cargo doc` zero warnings (both default and `--all-features`)
 
 #### Tests
-- [ ] Unit test coverage on all public functions
-- [ ] Integration tests
-- [ ] Property tests for invariants
-- [ ] Cross-platform CI green
-- [ ] Both stable and MSRV green
+- [x] Unit test coverage on all public functions
+- [x] Integration tests
+- [x] Property tests for invariants
+- [ ] Cross-platform CI green (pending push)
+- [ ] Both stable and MSRV green (pending push)
 
 #### Performance
-- [ ] Hot paths benchmarked
-- [ ] Allocation profile checked
-- [ ] No regressions
-- [ ] Benchmark baselines saved
+- [x] Hot paths benchmarked
+- [x] Allocation profile checked
+- [x] No regressions (no prior baseline; this release captures one)
+- [x] Benchmark baselines saved (`.dev/benchmarks/v0.9.0-baseline.md`)
 
 #### Final
-- [ ] `cargo fmt --all -- --check` clean
-- [ ] `cargo clippy --all-targets --all-features -- -D warnings` clean
-- [ ] `cargo test --all-features` clean
-- [ ] `cargo doc` clean with `RUSTDOCFLAGS=-D warnings`
+- [x] `cargo fmt --all -- --check` clean
+- [x] `cargo clippy --all-targets --all-features -- -D warnings` clean
+- [x] `cargo test --all-features` clean
+- [x] `cargo doc` clean with `RUSTDOCFLAGS=-D warnings`
 
 ### Output
-- [ ] `.dev/release/v0.9.0.md` written
-- [ ] Audit findings logged
-- [ ] All findings resolved or deferred to 1.x
+- [x] `.dev/release/v0.9.0.md` written
+- [x] Audit findings logged (in the release note)
+- [x] All findings resolved (no items deferred to 1.x)
 
 ---
 

@@ -144,3 +144,67 @@ impl From<SinkError> for Error {
         Self::Sink(value)
     }
 }
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::{Error, SinkError};
+    use crate::record::RecordId;
+
+    /// Exercises [`core::fmt::Display`] for every [`Error`] variant. Drives
+    /// the format strings so they cannot rot silently.
+    #[test]
+    fn error_display_covers_all_variants() {
+        let id = RecordId::from_u64(7);
+        assert_eq!(Error::Sink(SinkError::Io).to_string(), "audit sink failure");
+        assert_eq!(Error::ChainBroken.to_string(), "audit hash chain broken");
+        assert_eq!(Error::Capacity.to_string(), "audit capacity exceeded");
+        assert_eq!(
+            Error::NonMonotonicClock.to_string(),
+            "audit clock not monotonic"
+        );
+        assert_eq!(
+            Error::HashMismatch(id).to_string(),
+            "audit hash mismatch at record 7"
+        );
+        assert_eq!(
+            Error::LinkMismatch(id).to_string(),
+            "audit link mismatch at record 7"
+        );
+        assert_eq!(
+            Error::IdMismatch(id).to_string(),
+            "audit id mismatch at record 7"
+        );
+        assert_eq!(Error::Truncated.to_string(), "audit input truncated");
+        assert_eq!(
+            Error::InvalidFormat.to_string(),
+            "audit input invalid format"
+        );
+        assert_eq!(Error::Io.to_string(), "audit i/o failure");
+    }
+
+    /// Exercises [`core::fmt::Display`] for every [`SinkError`] variant.
+    #[test]
+    fn sink_error_display_covers_all_variants() {
+        assert_eq!(SinkError::Io.to_string(), "sink i/o failure");
+        assert_eq!(SinkError::Capacity.to_string(), "sink capacity exceeded");
+        assert_eq!(SinkError::Closed.to_string(), "sink closed");
+        assert_eq!(SinkError::Other.to_string(), "sink error");
+    }
+
+    /// [`Error::source`] points at the wrapped [`SinkError`] when present.
+    #[test]
+    fn error_source_chains_to_sink_error() {
+        use std::error::Error as _;
+        let err = Error::Sink(SinkError::Closed);
+        assert!(err.source().is_some());
+        let other = Error::Truncated;
+        assert!(other.source().is_none());
+    }
+
+    /// `From<SinkError> for Error` wraps the inner value losslessly.
+    #[test]
+    fn from_sink_error_wraps() {
+        let e: Error = SinkError::Capacity.into();
+        assert_eq!(e, Error::Sink(SinkError::Capacity));
+    }
+}

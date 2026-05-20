@@ -19,6 +19,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.0] - 2026-05-20
+
+**Feature freeze.** Pre-1.0 audit pass. No new public features; no
+existing public item changed signature, was renamed, or was removed.
+
+### Added
+
+- `src/error.rs` lib unit tests: `Display` coverage for every `Error`
+  variant (including previously-unexercised `ChainBroken`, `Capacity`,
+  `Io`) and every `SinkError` variant (`Io`, `Capacity`, `Closed`,
+  `Other`); `Error::source` chain test; `From<SinkError> for Error`
+  test. 4 new tests.
+- `src/record.rs` lib unit tests: `RecordId::GENESIS`,
+  `Outcome::as_u8` stable encoding, `Record` accessor round-trip,
+  `Record::with_hash` field-swap invariant. 4 new tests.
+- `.dev/benchmarks/v0.9.0-baseline.md` — captured `append` and
+  `verify` numbers across all three reference hashers (XOR baseline,
+  Sha256, Blake3) on the dev host. Future releases compare against
+  this baseline for regression detection.
+
+### Changed
+
+- `src/sink.rs` — `Sink::write` now documents its `# Errors` contract:
+  `SinkError` propagates via `Chain::append` as `Error::Sink` without
+  advancing chain state, leaving callers free to retry.
+- `src/codec.rs` — `encode_record` now has a proper `# Errors` section
+  listing `Error::InvalidFormat` as the only failure mode (string
+  field longer than `u32::MAX`).
+- `src/record.rs` — the lone `#[allow(clippy::too_many_arguments)]` on
+  `Record::new` now carries a justification comment explaining why
+  the eight-argument constructor is the right shape.
+- README gained a **Status** section announcing feature freeze and
+  linking to the audit summary and benchmark baseline.
+- README quick-start version bumped to `"0.9"`.
+- Crate version bumped to `0.9.0`.
+
+### Fixed
+
+- Nothing user-visible. The audit pass tightened internal
+  documentation and tests without changing any public behaviour.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.9.0
+
+---
+
 ## [0.7.0] - 2026-05-20
 
 ### Added
@@ -41,7 +87,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README quick-start version bumped from `"0.6"` to `"0.7"`.
 - Crate version bumped to `0.7.0`.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.7.0...HEAD
 [0.7.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.7.0
 
 ---

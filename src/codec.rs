@@ -100,10 +100,12 @@ pub fn verify_file_header(bytes: &[u8]) -> Result<()> {
 /// big-endian `u32`; the body follows the layout documented in the module
 /// rustdoc.
 ///
-/// String fields longer than `u32::MAX` are unrepresentable and would
-/// trigger silent truncation; in practice audit fields are tiny, but the
-/// encoder guards against it explicitly by returning
-/// [`Error::InvalidFormat`].
+/// # Errors
+///
+/// * [`Error::InvalidFormat`] — any string field's UTF-8 byte length, or
+///   the resulting body length, would not fit in a `u32`. In practice
+///   audit fields are tiny; the check is here so that absurd inputs
+///   produce a typed error rather than silent truncation.
 pub fn encode_record(record: &Record<'_>, out: &mut Vec<u8>) -> Result<()> {
     let actor_bytes = record.actor().as_str().as_bytes();
     let action_bytes = record.action().as_str().as_bytes();

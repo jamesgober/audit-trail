@@ -19,6 +19,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-05-20
+
+### Added
+
+- `Verifier<H>` — replays a chain of records and proves the chain is
+  untampered. Detects mutated fields, broken hash links, skipped or
+  reordered ids, and (optionally) non-monotonic timestamps. Exposes
+  `Verifier::new`, `Verifier::resume`, `Verifier::with_strict_timestamps`,
+  `Verifier::next_id`, `Verifier::last_hash`, `Verifier::last_timestamp`,
+  `Verifier::verify`, and `Verifier::into_hasher`.
+- `Record::with_hash(self, Digest) -> Self` — return a copy of a record
+  with the hash field swapped. Supports the draft-then-hash construction
+  pattern that the chain and external storage layers use.
+- `Error::HashMismatch(RecordId)` — record's stored hash does not match
+  the digest recomputed from its fields.
+- `Error::LinkMismatch(RecordId)` — record's `prev_hash` does not equal
+  the previous record's hash.
+- `Error::IdMismatch(RecordId)` — record's id is not the expected next id
+  in the chain.
+- `tests/verify.rs` — 7 integration tests covering the verifier across
+  the clean-chain path, each mutation class (field, link, id skip,
+  timestamp regression), checkpoint resume, and relaxed-timestamp mode.
+
+### Changed
+
+- Internalised the canonical record encoding (`id || ts || actor ||
+  action || target || outcome || prev_hash`, `0x1f`-separated) in a new
+  crate-private `canonical` module. `Chain::append` and `Verifier::verify`
+  now both call into the same encoder, so the producer and consumer of
+  the hash cannot drift apart.
+- CI workflow: bumped `actions/cache@v4` → `@v5` to clear the GitHub
+  Node 20 deprecation annotation. `actions/checkout@v5` and
+  `actions/setup-node@v5` were already on Node 24.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.3.0
+
+---
+
 ## [0.2.1] - 2026-05-20
 
 ### Fixed
@@ -72,7 +111,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REPS compliance baseline.
 - CI for Linux/macOS/Windows on stable and MSRV.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.2.1...HEAD
 [0.2.1]: https://github.com/jamesgober/audit-trail/releases/tag/v0.2.1
 [0.2.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.2.0
-[0.1.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.1.0

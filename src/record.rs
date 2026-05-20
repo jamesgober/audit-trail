@@ -230,6 +230,17 @@ impl<'a> Record<'a> {
         }
     }
 
+    /// Return a copy of this record with `hash` replaced.
+    ///
+    /// Useful when constructing a record in two steps: build a draft with a
+    /// placeholder hash (typically [`Digest::ZERO`]), feed it through a
+    /// hasher to derive its real digest, then swap the hash in.
+    #[inline]
+    pub const fn with_hash(mut self, hash: Digest) -> Self {
+        self.hash = hash;
+        self
+    }
+
     /// Record identifier.
     #[inline]
     pub const fn id(&self) -> RecordId {

@@ -6,6 +6,8 @@
 
 use core::fmt;
 
+use crate::record::RecordId;
+
 /// Convenience [`Result`] type alias used throughout the crate.
 ///
 /// # Example
@@ -36,14 +38,26 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     /// A configured sink failed to persist a record.
     Sink(SinkError),
-    /// The running hash chain failed an integrity check
-    /// (for example a previous-hash mismatch on append).
+    /// The running hash chain failed a generic integrity check.
+    ///
+    /// Verification surfaces more specific variants
+    /// ([`Error::HashMismatch`], [`Error::LinkMismatch`],
+    /// [`Error::IdMismatch`]) when possible.
     ChainBroken,
     /// A fixed-size buffer or counter exceeded its capacity
     /// (for example, the record id counter overflowed).
     Capacity,
     /// The configured clock returned a timestamp that violates monotonicity.
     NonMonotonicClock,
+    /// A record's stored `hash` does not match the digest recomputed from
+    /// its fields. Carries the failing record's id.
+    HashMismatch(RecordId),
+    /// A record's `prev_hash` does not equal the previous record's `hash`.
+    /// Carries the failing record's id.
+    LinkMismatch(RecordId),
+    /// A record's id is not the expected next id in the chain. Carries the
+    /// id that was found.
+    IdMismatch(RecordId),
 }
 
 impl fmt::Display for Error {
@@ -53,6 +67,9 @@ impl fmt::Display for Error {
             Self::ChainBroken => f.write_str("audit hash chain broken"),
             Self::Capacity => f.write_str("audit capacity exceeded"),
             Self::NonMonotonicClock => f.write_str("audit clock not monotonic"),
+            Self::HashMismatch(id) => write!(f, "audit hash mismatch at record {}", id.as_u64()),
+            Self::LinkMismatch(id) => write!(f, "audit link mismatch at record {}", id.as_u64()),
+            Self::IdMismatch(id) => write!(f, "audit id mismatch at record {}", id.as_u64()),
         }
     }
 }

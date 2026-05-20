@@ -15,6 +15,7 @@
 //! - [`Hasher`] — pluggable hash function (SHA-256, BLAKE3, …).
 //! - [`Sink`] — pluggable backend that persists each record.
 //! - [`Clock`] — pluggable time source.
+//! - [`Verifier`] — replays a chain and proves it is untampered.
 //!
 //! `audit-trail` does not bundle a concrete hasher, sink, or clock in the
 //! foundation milestone. Callers wire concrete implementations in.
@@ -52,12 +53,14 @@
 /// Crate version string, populated by Cargo at build time.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+mod canonical;
 mod chain;
 mod clock;
 mod error;
 mod hash;
 mod record;
 mod sink;
+mod verify;
 
 pub use chain::Chain;
 pub use clock::{Clock, Timestamp};
@@ -65,3 +68,4 @@ pub use error::{Error, Result, SinkError};
 pub use hash::{Digest, HASH_LEN, Hasher};
 pub use record::{Action, Actor, Outcome, Record, RecordId, Target};
 pub use sink::Sink;
+pub use verify::Verifier;

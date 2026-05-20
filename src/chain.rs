@@ -12,15 +12,12 @@
 //!
 //! The path is allocation-free: every field is borrowed or stack-resident.
 
+use crate::canonical;
 use crate::clock::{Clock, Timestamp};
 use crate::error::{Error, Result};
 use crate::hash::{Digest, Hasher};
 use crate::record::{Action, Actor, Outcome, Record, RecordId, Target};
 use crate::sink::Sink;
-
-/// Stable separator byte mixed between hashed fields to prevent
-/// concatenation-collision attacks (e.g. `"ab" + "c"` vs `"a" + "bc"`).
-const FIELD_SEP: u8 = 0x1f;
 
 /// An append-only chain of audit records.
 ///
@@ -196,27 +193,18 @@ where
         let next = self.next_id.checked_add(1).ok_or(Error::Capacity)?;
         let prev_hash = self.last_hash;
 
-        self.hasher.reset();
-        self.hasher.update(&id.as_u64().to_be_bytes());
-        self.hasher.update(&[FIELD_SEP]);
-        self.hasher.update(&timestamp.as_nanos().to_be_bytes());
-        self.hasher.update(&[FIELD_SEP]);
-        self.hasher.update(actor.as_str().as_bytes());
-        self.hasher.update(&[FIELD_SEP]);
-        self.hasher.update(action.as_str().as_bytes());
-        self.hasher.update(&[FIELD_SEP]);
-        self.hasher.update(target.as_str().as_bytes());
-        self.hasher.update(&[FIELD_SEP]);
-        self.hasher.update(&[outcome.as_u8()]);
-        self.hasher.update(&[FIELD_SEP]);
-        self.hasher.update(prev_hash.as_bytes());
-
-        let mut hash = Digest::ZERO;
-        self.hasher.finalize(&mut hash);
-
-        let record = Record::new(
-            id, timestamp, actor, action, target, outcome, prev_hash, hash,
+        let draft = Record::new(
+            id,
+            timestamp,
+            actor,
+            action,
+            target,
+            outcome,
+            prev_hash,
+            Digest::ZERO,
         );
+        let hash = canonical::compute(&mut self.hasher, &draft);
+        let record = draft.with_hash(hash);
         self.sink.write(&record)?;
 
         self.next_id = next;

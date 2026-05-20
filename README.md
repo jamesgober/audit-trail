@@ -84,6 +84,25 @@ the same path appends after validating the header.
 For `no_std` use `default-features = false` and supply your own hasher,
 sink, and clock.
 
+### Examples
+
+Runnable demonstrations under [`examples/`](examples/):
+
+```
+cargo run --example in_memory --features sha2
+cargo run --example file_log --features sha2
+cargo run --example tamper_detection --features sha2
+```
+
+- [`examples/in_memory.rs`](examples/in_memory.rs) — build a SHA-256 chain in memory, print it, verify it.
+- [`examples/file_log.rs`](examples/file_log.rs) — write a chain to a file with `FileSink`, replay it with `FileReader`.
+- [`examples/tamper_detection.rs`](examples/tamper_detection.rs) — build a chain, mutate one record, see the `Verifier` reject it with the exact failing `RecordId`.
+
+### Documentation
+
+- [`docs/API.md`](docs/API.md) — full public API reference: every type, trait, function, with descriptions and code examples.
+- [docs.rs/audit-trail](https://docs.rs/audit-trail) — generated rustdoc.
+
 ### Benchmarks
 
 ```

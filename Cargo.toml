@@ -1,6 +1,6 @@
 ﻿[package]
 name = "audit-trail"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 rust-version = "1.85"
 readme = "README.md"
@@ -59,6 +59,18 @@ harness = false
 [[bench]]
 name = "verify"
 harness = false
+
+[[example]]
+name = "in_memory"
+required-features = ["sha2"]
+
+[[example]]
+name = "file_log"
+required-features = ["sha2"]
+
+[[example]]
+name = "tamper_detection"
+required-features = ["sha2"]
 
 [profile.release]
 opt-level = 3

@@ -19,6 +19,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.1] - 2026-05-20
+
+**Docs / examples patch.** No code changes; no public API changes.
+
+### Added
+
+- `examples/` directory with three runnable demonstrations:
+  - `examples/in_memory.rs` — build a SHA-256 chain with `MemorySink`
+    + `SystemClock`, print the records, verify.
+  - `examples/file_log.rs` — write a chain to a temp file via
+    `FileSink`, reopen with `FileReader`, replay through `Verifier`.
+  - `examples/tamper_detection.rs` — mutate one record and watch
+    `Verifier` reject it with the exact failing `RecordId`.
+  - Each example gated on `required-features = ["sha2"]` via three
+    new `[[example]]` entries in `Cargo.toml`.
+- `docs/API.md` — comprehensive public API reference covering every
+  type, trait, function, and constant in the crate. Includes:
+  - Quick navigation pointing at the new examples.
+  - Per-item signatures, descriptions, error contracts, and 1–2 code
+    examples.
+  - Grouping: core types → pluggable traits → `Chain`/`Verifier` →
+    `codec` → reference implementations → errors → patterns.
+  - Cross-references via anchor links.
+- README **Examples** section listing the three runnable examples.
+- README **Documentation** section linking `docs/API.md` and
+  `docs.rs/audit-trail`.
+
+### Changed
+
+- Crate version bumped to `1.0.1`.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/jamesgober/audit-trail/releases/tag/v1.0.1
+
+---
+
 ## [1.0.0] - 2026-05-20
 
 **Stable release.** Public API and on-disk codec format are
@@ -44,7 +80,6 @@ this release is the audit-closing milestone declaration.
   would bump it.
 - **MSRV:** Rust 1.85, fixed for `1.x`.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/jamesgober/audit-trail/releases/tag/v1.0.0
 
 ---

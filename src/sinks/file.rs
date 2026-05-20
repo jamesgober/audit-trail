@@ -60,9 +60,8 @@ impl FileSink<BufWriter<File>> {
             let mut header = [0u8; codec::FILE_HEADER_LEN];
             file.read_exact(&mut header)
                 .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "missing audit header"))?;
-            codec::verify_file_header(&header).map_err(|_| {
-                io::Error::new(io::ErrorKind::InvalidData, "invalid audit header")
-            })?;
+            codec::verify_file_header(&header)
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid audit header"))?;
             let _ = file.seek(SeekFrom::End(0))?;
         }
 

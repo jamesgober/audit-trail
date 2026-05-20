@@ -221,10 +221,7 @@ fn file_reader_handles_truncated_tail() {
 
     let full_len = std::fs::metadata(&path).expect("stat").len();
     assert!(full_len > 20);
-    let truncated = OpenOptions::new()
-        .write(true)
-        .open(&path)
-        .expect("reopen");
+    let truncated = OpenOptions::new().write(true).open(&path).expect("reopen");
     truncated.set_len(full_len - 5).expect("truncate");
 
     let mut reader = FileReader::open(&path).expect("open");

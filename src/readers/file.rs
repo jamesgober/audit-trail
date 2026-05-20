@@ -120,4 +120,3 @@ impl<R: Read> Iterator for FileReader<R> {
         }
     }
 }
-

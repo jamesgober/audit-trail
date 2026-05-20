@@ -83,10 +83,10 @@ mod verify;
 pub mod codec;
 #[cfg(feature = "alloc")]
 mod owned;
-#[cfg(feature = "alloc")]
-mod sinks;
 #[cfg(feature = "std")]
 mod readers;
+#[cfg(feature = "alloc")]
+mod sinks;
 
 #[cfg(feature = "sha2")]
 mod hashers;

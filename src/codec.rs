@@ -116,10 +116,8 @@ pub fn encode_record(record: &Record<'_>, out: &mut Vec<u8>) -> Result<()> {
         return Err(Error::InvalidFormat);
     }
 
-    let body_len = RECORD_FIXED_LEN
-        + 4 + actor_bytes.len()
-        + 4 + action_bytes.len()
-        + 4 + target_bytes.len();
+    let body_len =
+        RECORD_FIXED_LEN + 4 + actor_bytes.len() + 4 + action_bytes.len() + 4 + target_bytes.len();
     if body_len > u32::MAX as usize {
         return Err(Error::InvalidFormat);
     }
@@ -157,9 +155,7 @@ pub fn decode_record(bytes: &[u8]) -> Result<(OwnedRecord, usize)> {
         return Err(Error::Truncated);
     }
     let body_len = read_u32(&bytes[0..4]) as usize;
-    let frame_end = 4usize
-        .checked_add(body_len)
-        .ok_or(Error::InvalidFormat)?;
+    let frame_end = 4usize.checked_add(body_len).ok_or(Error::InvalidFormat)?;
     if bytes.len() < frame_end {
         return Err(Error::Truncated);
     }
@@ -236,4 +232,3 @@ fn read_u64(bytes: &[u8]) -> u64 {
     buf.copy_from_slice(&bytes[0..8]);
     u64::from_be_bytes(buf)
 }
-

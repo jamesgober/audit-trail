@@ -14,7 +14,7 @@ Fast-track. No slow-stepping.
 
 ---
 
-## Phase 0.2.0 - Foundation
+## Phase 0.2.0 - Foundation (done)
 
 Define the public API surface.
 
@@ -25,13 +25,13 @@ Skill areas in scope:
   - compliance frameworks
   - structured logging
 
-- [ ] Public types defined
-- [ ] Public traits defined
-- [ ] Module structure laid out
-- [ ] Error type defined
-- [ ] First end-to-end smoke test passing
-- [ ] CHANGELOG updated
-- [ ] `.dev/release/v0.2.0.md` written
+- [x] Public types defined
+- [x] Public traits defined
+- [x] Module structure laid out
+- [x] Error type defined
+- [x] First end-to-end smoke test passing
+- [x] CHANGELOG updated
+- [x] `.dev/release/v0.2.0.md` written
 
 ---
 

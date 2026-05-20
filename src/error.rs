@@ -1,0 +1,116 @@
+//! Error and result types for `audit-trail` operations.
+//!
+//! The crate uses a single [`Error`] enum with a small number of broad
+//! categories. The enum is `#[non_exhaustive]` so further variants may be
+//! added in minor releases without breaking callers.
+
+use core::fmt;
+
+/// Convenience [`Result`] type alias used throughout the crate.
+///
+/// # Example
+///
+/// ```
+/// fn do_audit() -> audit_trail::Result<()> {
+///     Ok(())
+/// }
+/// assert!(do_audit().is_ok());
+/// ```
+pub type Result<T> = core::result::Result<T, Error>;
+
+/// Error categories produced by `audit-trail`.
+///
+/// Variants are intentionally coarse-grained. Concrete backends communicate
+/// finer-grained failures via [`SinkError`] wrapped inside [`Error::Sink`].
+///
+/// # Example
+///
+/// ```
+/// use audit_trail::Error;
+///
+/// let err = Error::ChainBroken;
+/// assert_eq!(err.to_string(), "audit hash chain broken");
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Error {
+    /// A configured sink failed to persist a record.
+    Sink(SinkError),
+    /// The running hash chain failed an integrity check
+    /// (for example a previous-hash mismatch on append).
+    ChainBroken,
+    /// A fixed-size buffer or counter exceeded its capacity
+    /// (for example, the record id counter overflowed).
+    Capacity,
+    /// The configured clock returned a timestamp that violates monotonicity.
+    NonMonotonicClock,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Sink(_) => f.write_str("audit sink failure"),
+            Self::ChainBroken => f.write_str("audit hash chain broken"),
+            Self::Capacity => f.write_str("audit capacity exceeded"),
+            Self::NonMonotonicClock => f.write_str("audit clock not monotonic"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Sink(inner) => Some(inner),
+            _ => None,
+        }
+    }
+}
+
+/// Opaque error returned by [`crate::Sink`] implementations.
+///
+/// Backends map their internal failures to one of a small set of categories.
+/// Categories are deliberately coarse: callers either retry the write or
+/// surface the audit failure upstream.
+///
+/// # Example
+///
+/// ```
+/// use audit_trail::SinkError;
+///
+/// let err = SinkError::Io;
+/// assert_eq!(err.to_string(), "sink i/o failure");
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum SinkError {
+    /// Underlying I/O failure (disk, socket, etc.).
+    Io,
+    /// Sink has reached its capacity and cannot accept more records.
+    Capacity,
+    /// Sink has been closed and will accept no further writes.
+    Closed,
+    /// Sink-specific failure not covered by the other variants.
+    Other,
+}
+
+impl fmt::Display for SinkError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io => f.write_str("sink i/o failure"),
+            Self::Capacity => f.write_str("sink capacity exceeded"),
+            Self::Closed => f.write_str("sink closed"),
+            Self::Other => f.write_str("sink error"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for SinkError {}
+
+impl From<SinkError> for Error {
+    #[inline]
+    fn from(value: SinkError) -> Self {
+        Self::Sink(value)
+    }
+}

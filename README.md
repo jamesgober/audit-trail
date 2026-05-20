@@ -27,27 +27,15 @@ Structured audit logging with tamper-evident chaining. Every write produces a cr
 
 ```toml
 [dependencies]
-audit-trail = { version = "0.6", features = ["sha2"] }
+audit-trail = { version = "0.7", features = ["sha2"] }
 ```
 
 ```rust,no_run
 use audit_trail::{
-    Action, Actor, Chain, Clock, MemorySink, Outcome, Sha256Hasher, Target, Timestamp, Verifier,
+    Action, Actor, Chain, MemorySink, Outcome, Sha256Hasher, SystemClock, Target, Verifier,
 };
 
-// Plug in any monotonic time source.
-struct SystemClock;
-impl Clock for SystemClock {
-    fn now(&self) -> Timestamp {
-        let ns = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0);
-        Timestamp::from_nanos(ns)
-    }
-}
-
-let mut chain = Chain::new(Sha256Hasher::new(), MemorySink::new(), SystemClock);
+let mut chain = Chain::new(Sha256Hasher::new(), MemorySink::new(), SystemClock::new());
 
 chain.append(
     Actor::new("user-42"),
@@ -67,11 +55,10 @@ for r in sink.records() {
 ### Persisting to a file
 
 ```rust,no_run
-use audit_trail::{Chain, FileSink, FileReader, Sha256Hasher, Verifier};
-# struct C; impl audit_trail::Clock for C { fn now(&self) -> audit_trail::Timestamp { audit_trail::Timestamp::from_nanos(0) } }
-# let clock = C;
+use audit_trail::{Chain, FileSink, FileReader, Sha256Hasher, SystemClock, Verifier};
+
 let sink = FileSink::open_or_create("audit.log").expect("open");
-let mut chain = Chain::new(Sha256Hasher::new(), sink, clock);
+let mut chain = Chain::new(Sha256Hasher::new(), sink, SystemClock::new());
 // ... chain.append(...) ...
 
 // Replay and verify the on-disk log.

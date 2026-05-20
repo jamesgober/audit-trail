@@ -19,6 +19,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-05-20
+
+### Added
+
+- `SystemClock` (feature `std`) — wall-clock `Clock` impl backed by
+  `std::time::SystemTime`. Returns nanoseconds since the Unix epoch.
+  Saturates at `u64::MAX` for far-future timestamps; returns
+  `Timestamp::EPOCH` if the system clock is pre-epoch.
+  - `SystemClock::new()` (const), `impl Default`, `impl Clone`,
+    `impl Copy`, `impl Debug`.
+
+### Changed
+
+- `FileReader` now reuses a single internal scratch buffer instead of
+  allocating a fresh `Vec<u8>` for every record. Removes one allocation
+  per `next()` call; behaviour and public API are unchanged.
+- README quick-start examples simplified — both the in-memory and
+  file-persistence examples now use `SystemClock` instead of an
+  inline `Clock` impl.
+- README quick-start version bumped from `"0.6"` to `"0.7"`.
+- Crate version bumped to `0.7.0`.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.7.0
+
+---
+
 ## [0.6.0] - 2026-05-20
 
 ### Added
@@ -51,7 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rustdoc. Feature-gated re-exports are now referenced as plain code
   in cross-feature prose.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.6.0
 
 ---

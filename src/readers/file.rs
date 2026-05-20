@@ -17,6 +17,8 @@ use crate::owned::OwnedRecord;
 pub struct FileReader<R: Read> {
     reader: R,
     state: State,
+    /// Reusable frame buffer. Resized as needed; never shrunk.
+    scratch: Vec<u8>,
 }
 
 enum State {
@@ -49,6 +51,7 @@ impl<R: Read> FileReader<R> {
         Self {
             reader,
             state: State::Fresh,
+            scratch: Vec::with_capacity(256),
         }
     }
 
@@ -75,16 +78,18 @@ impl<R: Read> FileReader<R> {
             Err(_) => return Some(Err(Error::Io)),
         }
         let body_len = u32::from_be_bytes(len_buf) as usize;
-        let mut frame = vec![0u8; 4 + body_len];
-        frame[0..4].copy_from_slice(&len_buf);
-        if let Err(e) = self.reader.read_exact(&mut frame[4..]) {
+        let frame_len = 4 + body_len;
+        self.scratch.clear();
+        self.scratch.resize(frame_len, 0);
+        self.scratch[0..4].copy_from_slice(&len_buf);
+        if let Err(e) = self.reader.read_exact(&mut self.scratch[4..]) {
             return Some(Err(match e.kind() {
                 io::ErrorKind::UnexpectedEof => Error::Truncated,
                 _ => Error::Io,
             }));
         }
-        match codec::decode_record(&frame) {
-            Ok((record, consumed)) if consumed == frame.len() => Some(Ok(record)),
+        match codec::decode_record(&self.scratch) {
+            Ok((record, consumed)) if consumed == frame_len => Some(Ok(record)),
             Ok(_) => Some(Err(Error::InvalidFormat)),
             Err(e) => Some(Err(e)),
         }

@@ -94,6 +94,9 @@ mod sinks;
 mod hashers;
 
 pub use chain::Chain;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use clock::SystemClock;
 pub use clock::{Clock, Timestamp};
 pub use error::{Error, Result, SinkError};
 pub use hash::{Digest, HASH_LEN, Hasher};

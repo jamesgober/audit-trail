@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-05-20
+
+### Fixed
+
+- CI fmt step failed on GitHub's Windows runner because its default
+  `core.autocrlf=true` rewrote LF-committed sources to CRLF on checkout,
+  which `rustfmt`'s `newline_style = "Unix"` then rejected. Added a
+  `.gitattributes` enforcing LF on checkout for every text source
+  (`*.rs`, `*.toml`, `*.md`, `*.yml`, `*.yaml`, `*.json`, `*.sh`) and
+  explicitly marking common binary types, so the Windows job formats
+  cleanly without changing committed bytes.
+
+---
+
 ## [0.2.0] - 2026-05-20
 
 ### Added
@@ -58,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REPS compliance baseline.
 - CI for Linux/macOS/Windows on stable and MSRV.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/jamesgober/audit-trail/releases/tag/v0.2.1
 [0.2.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.2.0
 [0.1.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.1.0

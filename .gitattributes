@@ -1,0 +1,25 @@
+# Enforce LF line endings on checkout for every platform.
+# rustfmt's `newline_style = "Unix"` rejects CRLF, and GitHub's Windows
+# runner defaults to core.autocrlf=true which would otherwise convert
+# committed LF to CRLF in the working tree.
+
+* text=auto eol=lf
+
+*.rs text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+
+# Treat well-known binary types as binary regardless of detection.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.pdf binary
+*.gz binary
+*.zip binary

@@ -9,6 +9,9 @@ Cargo.lock.bak
 *~
 .DS_Store
 Thumbs.db
+.claude/
+.dev/
+dev/
 *.rlib
 *.rmeta
 *.so
@@ -30,5 +33,3 @@ perf.data*
 .env
 .env.local
 desktop.ini
-.claude/
-/.dev

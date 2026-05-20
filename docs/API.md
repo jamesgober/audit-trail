@@ -9,7 +9,7 @@
 <p align="center">
     <a href="../README.md">HOME</a> &nbsp;|&nbsp;
     <a href="./API.md">API</a> &nbsp;|&nbsp;
-    <a href="../.dev/ROADMAP.md">ROADMAP</a> &nbsp;|&nbsp;
+    <a href="./releases/">RELEASES</a> &nbsp;|&nbsp;
     <a href="../REPS.md">REPS</a>
 </p>
 
@@ -949,7 +949,7 @@ BLAKE3 reference hasher, backed by the `blake3` crate
 > (~100 bytes), `Sha256Hasher` is generally **faster** than
 > `Blake3Hasher` on x86_64 thanks to SHA-NI hardware acceleration.
 > BLAKE3's tree-parallelism wins on kilobyte+ payloads. See
-> [`.dev/benchmarks/v0.9.0-baseline.md`](../.dev/benchmarks/v0.9.0-baseline.md).
+> [`docs/benchmarks/v0.9.0-baseline.md`](./benchmarks/v0.9.0-baseline.md).
 
 Example:
 ```rust
@@ -1176,6 +1176,6 @@ record with the exact `RecordId` of the offending entry.
   panics in shipping code; no required heavy dependencies; `no_std`
   capable. See [`REPS.md`](../REPS.md).
 - **Audit summary:** the pre-1.0 audit pass is documented in
-  [`.dev/release/v0.9.0.md`](../.dev/release/v0.9.0.md). Performance
+  [`docs/releases/v0.9.0.md`](./releases/v0.9.0.md). Performance
   baseline at
-  [`.dev/benchmarks/v0.9.0-baseline.md`](../.dev/benchmarks/v0.9.0-baseline.md).
+  [`docs/benchmarks/v0.9.0-baseline.md`](./benchmarks/v0.9.0-baseline.md).

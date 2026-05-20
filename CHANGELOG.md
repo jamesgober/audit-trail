@@ -49,6 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Crate version bumped to `1.0.1`.
+- Repository restructure: moved `.dev/release/` → `docs/releases/`
+  and `.dev/benchmarks/` → `docs/benchmarks/` via `git mv` (history
+  preserved). Untracked the remaining internal `.dev/` files
+  (`ROADMAP.md`, `PROMPT.md`, `DIRECTIVES.md`) — they stay local but
+  no longer appear on the public repo. `.gitignore` pattern
+  tightened from `.dev/*` to `.dev/`. Cross-references in
+  `docs/API.md` updated accordingly.
 
 [Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.0.1...HEAD
 [1.0.1]: https://github.com/jamesgober/audit-trail/releases/tag/v1.0.1

@@ -27,7 +27,7 @@ Structured audit logging with tamper-evident chaining. Every write produces a cr
 
 ```toml
 [dependencies]
-audit-trail = { version = "0.5", features = ["sha2"] }
+audit-trail = { version = "0.6", features = ["sha2"] }
 ```
 
 ```rust,no_run
@@ -92,10 +92,22 @@ the same path appends after validating the header.
 |-----------|---------|-----------------------------------------------------------|
 | `std`     | yes     | `FileSink`, `FileReader`, `std::error::Error` impls. Implies `alloc`. |
 | `alloc`   | yes (via `std`) | `OwnedRecord`, `MemorySink`, `codec` module       |
-| `sha2`    | no      | `Sha256Hasher` (reference SHA-256 implementation)         |
+| `sha2`    | no      | `Sha256Hasher` (reference SHA-256, FIPS 180-4)            |
+| `blake3`  | no      | `Blake3Hasher` (reference BLAKE3, faster on modern CPUs)  |
 
 For `no_std` use `default-features = false` and supply your own hasher,
 sink, and clock.
+
+### Benchmarks
+
+```
+cargo bench --features sha2,blake3
+```
+
+Two suites are provided:
+
+- `benches/append.rs` — chain append throughput per hasher (XOR / SHA-256 / BLAKE3).
+- `benches/verify.rs` — 1 000-record chain replay through `Verifier`.
 
 ---
 

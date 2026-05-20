@@ -27,8 +27,10 @@
 //! - `alloc` — enables owned-record and in-memory sink types
 //!   ([`OwnedRecord`], [`MemorySink`]) plus the [`codec`] module for
 //!   serialising records to bytes.
-//! - `sha2` — enables the reference [`Sha256Hasher`] backed by the `sha2`
+//! - `sha2` — enables the reference `Sha256Hasher` backed by the `sha2`
 //!   crate.
+//! - `blake3` — enables the reference `Blake3Hasher` backed by the
+//!   `blake3` crate.
 //!
 //! Without any optional features, the crate ships traits, the `Chain`,
 //! and the `Verifier` only — callers supply their own hasher, sink, and
@@ -88,7 +90,7 @@ mod readers;
 #[cfg(feature = "alloc")]
 mod sinks;
 
-#[cfg(feature = "sha2")]
+#[cfg(any(feature = "sha2", feature = "blake3"))]
 mod hashers;
 
 pub use chain::Chain;
@@ -114,6 +116,10 @@ pub use readers::FileReader;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use sinks::FileSink;
+
+#[cfg(feature = "blake3")]
+#[cfg_attr(docsrs, doc(cfg(feature = "blake3")))]
+pub use hashers::Blake3Hasher;
 
 #[cfg(feature = "sha2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sha2")))]

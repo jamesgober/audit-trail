@@ -19,6 +19,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-05-20
+
+### Added
+
+- `Blake3Hasher` (feature `blake3`) — reference BLAKE3 hasher backed by
+  the `blake3` crate. Same `Hasher` interface as `Sha256Hasher`.
+- `tests/codec_proptest.rs` — 4 property tests (256 random cases each):
+  encode/decode round-trip, multi-record round-trip, single-byte
+  mutation never panics, arbitrary truncation never panics. New
+  `proptest` dev-dependency.
+- `benches/append.rs` — criterion benchmark of `Chain::append`
+  throughput across XOR, SHA-256, BLAKE3 hashers.
+- `benches/verify.rs` — criterion benchmark of `Verifier::verify`
+  replaying a 1 000-record chain across the same three hashers.
+- New `criterion` dev-dependency.
+
+### Changed
+
+- Crate version bumped to `0.6.0`.
+- README quick-start version bumped from `"0.5"` to `"0.6"`.
+- README feature matrix gained a `blake3` row; new "Benchmarks"
+  subsection with `cargo bench` invocation.
+- `src/hashers/mod.rs` cfg-gates: `mod` declaration is now
+  `cfg(any(feature = "sha2", feature = "blake3"))`.
+
+### Fixed
+
+- `cargo doc` (without `--all-features`) no longer emits an
+  unresolved-link warning for `Sha256Hasher` in the crate-level
+  rustdoc. Feature-gated re-exports are now referenced as plain code
+  in cross-feature prose.
+
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.6.0
+
+---
+
 ## [0.5.0] - 2026-05-20
 
 ### Added
@@ -59,7 +96,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README quick-start version bumped from `"0.4"` to `"0.5"`.
 - Crate version bumped to `0.5.0`.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.5.0
 
 ---

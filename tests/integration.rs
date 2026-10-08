@@ -111,7 +111,7 @@ fn sha256_detects_mutation_at_correct_record() {
 #[test]
 fn sha256_detects_broken_link() {
     let mut records = build_sha256_chain();
-    records[2].prev_hash = Digest::from_bytes([0xCC; HASH_LEN]);
+    records[2].prev_hash = Digest::from_bytes([0xcc; HASH_LEN]);
 
     let mut verifier = Verifier::new(Sha256Hasher::new());
     verifier.verify(&records[0].as_record()).expect("record 0");

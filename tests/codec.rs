@@ -19,8 +19,8 @@ fn sample_record() -> OwnedRecord {
         action: String::from("record.delete"),
         target: String::from("record:1337"),
         outcome: Outcome::Denied,
-        prev_hash: Digest::from_bytes([0xAA; HASH_LEN]),
-        hash: Digest::from_bytes([0xBB; HASH_LEN]),
+        prev_hash: Digest::from_bytes([0xaa; HASH_LEN]),
+        hash: Digest::from_bytes([0xbb; HASH_LEN]),
     }
 }
 
@@ -62,7 +62,7 @@ fn header_bad_magic_is_invalid_format() {
 fn header_bad_version_is_invalid_format() {
     let mut buf = Vec::new();
     write_file_header(&mut buf);
-    buf[8] = 0xFF;
+    buf[8] = 0xff;
     assert_eq!(verify_file_header(&buf), Err(Error::InvalidFormat));
 }
 
@@ -90,7 +90,7 @@ fn invalid_outcome_byte_is_invalid_format() {
 
     // Outcome byte sits at offset 4 (skip length prefix) + 8 (id) + 8 (ts).
     let outcome_idx = 4 + 8 + 8;
-    buf[outcome_idx] = 0xFF;
+    buf[outcome_idx] = 0xff;
     assert_eq!(decode_record(&buf), Err(Error::InvalidFormat));
 }
 

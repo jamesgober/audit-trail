@@ -187,7 +187,7 @@ fn verifier_detects_broken_link() {
 
     // Tamper with prev_hash on record 2 (breaks linkage without touching the
     // record's own stored hash).
-    records[2].prev_hash = Digest::from_bytes([0xAA; HASH_LEN]);
+    records[2].prev_hash = Digest::from_bytes([0xaa; HASH_LEN]);
 
     let mut verifier = Verifier::new(XorHasher::default());
     verifier.verify(&records[0].borrowed()).expect("record 0");

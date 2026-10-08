@@ -328,8 +328,8 @@ mod tests {
             Action::new("user.login"),
             Target::new("session:abc"),
             Outcome::Success,
-            Digest::from_bytes([0xAA; HASH_LEN]),
-            Digest::from_bytes([0xBB; HASH_LEN]),
+            Digest::from_bytes([0xaa; HASH_LEN]),
+            Digest::from_bytes([0xbb; HASH_LEN]),
         );
         assert_eq!(r.id().as_u64(), 42);
         assert_eq!(r.timestamp().as_nanos(), 1_700_000_000);
@@ -337,8 +337,8 @@ mod tests {
         assert_eq!(r.action().as_str(), "user.login");
         assert_eq!(r.target().as_str(), "session:abc");
         assert_eq!(r.outcome(), Outcome::Success);
-        assert_eq!(r.prev_hash().as_bytes(), &[0xAA; HASH_LEN]);
-        assert_eq!(r.hash().as_bytes(), &[0xBB; HASH_LEN]);
+        assert_eq!(r.prev_hash().as_bytes(), &[0xaa; HASH_LEN]);
+        assert_eq!(r.hash().as_bytes(), &[0xbb; HASH_LEN]);
     }
 
     #[test]
@@ -353,7 +353,7 @@ mod tests {
             Digest::ZERO,
             Digest::ZERO,
         );
-        let new_hash = Digest::from_bytes([0xCC; HASH_LEN]);
+        let new_hash = Digest::from_bytes([0xcc; HASH_LEN]);
         let r2 = r.with_hash(new_hash);
         assert_eq!(r2.hash(), new_hash);
         assert_eq!(r2.id(), r.id());

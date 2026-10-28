@@ -48,4 +48,17 @@ pub trait Sink {
     /// [`Chain::append`]: crate::Chain::append
     /// [`Error::Sink`]: crate::Error::Sink
     fn write(&mut self, record: &Record<'_>) -> core::result::Result<(), SinkError>;
+
+    /// Push buffered records to the backend. The default does nothing, for
+    /// sinks that do not buffer. Called by [`Chain::flush`].
+    ///
+    /// # Errors
+    ///
+    /// [`SinkError`] when the backend cannot accept the buffered records.
+    ///
+    /// [`Chain::flush`]: crate::Chain::flush
+    #[inline]
+    fn flush(&mut self) -> core::result::Result<(), SinkError> {
+        Ok(())
+    }
 }

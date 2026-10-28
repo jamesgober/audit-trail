@@ -39,7 +39,34 @@ impl FileSink<BufWriter<File>> {
     /// A bad existing header is reported as
     /// [`io::ErrorKind::InvalidData`].
     pub fn open_or_create(path: impl AsRef<Path>) -> io::Result<Self> {
-        let mut file = OpenOptions::new()
+        Self::open_with(path.as_ref(), OpenOptions::new())
+    }
+
+    /// As [`FileSink::open_or_create`], but a file it creates is
+    /// owner-only on Unix (mode `0o600`); elsewhere a new file inherits
+    /// its directory's access control. An existing file keeps its mode.
+    ///
+    /// # Errors
+    ///
+    /// As for [`FileSink::open_or_create`].
+    pub fn open_or_create_private(path: impl AsRef<Path>) -> io::Result<Self> {
+        Self::open_with(path.as_ref(), crate::open::private_options())
+    }
+
+    /// Flush buffered records and sync the file's data to disk
+    /// (`File::sync_data`): when this returns, every record appended so far
+    /// survives a power loss.
+    ///
+    /// # Errors
+    ///
+    /// Surfaces the flush or sync I/O error verbatim.
+    pub fn sync(&mut self) -> io::Result<()> {
+        self.writer.flush()?;
+        self.writer.get_ref().sync_data()
+    }
+
+    fn open_with(path: &Path, mut options: OpenOptions) -> io::Result<Self> {
+        let mut file = options
             .read(true)
             .write(true)
             .create(true)
@@ -107,5 +134,9 @@ impl<W: Write> Sink for FileSink<W> {
             .write_all(&self.scratch)
             .map_err(|_| SinkError::Io)?;
         Ok(())
+    }
+
+    fn flush(&mut self) -> core::result::Result<(), SinkError> {
+        self.writer.flush().map_err(|_| SinkError::Io)
     }
 }

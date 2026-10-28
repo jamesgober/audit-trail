@@ -61,9 +61,11 @@ file under [`examples/`](../examples/) — run with
   - [`MemorySink`](#memorysink)
   - [`FileSink<W>`](#filesinkw)
   - [`FileReader<R>`](#filereaderr)
+  - [`Chain::open_file` and `OpenReport`](#chainopen_file-and-openreport)
   - [`Sha256Hasher`](#sha256hasher)
   - [`Blake3Hasher`](#blake3hasher)
   - [`SystemClock`](#systemclock)
+  - [`MonotonicClock<C>`](#monotonicclockc)
 - [Errors](#errors)
   - [`Error`](#error)
   - [`SinkError`](#sinkerror)
@@ -419,8 +421,13 @@ Source: `src/sink.rs`
 ```rust,ignore
 pub trait Sink {
     fn write(&mut self, record: &Record<'_>) -> Result<(), SinkError>;
+    fn flush(&mut self) -> Result<(), SinkError> { Ok(()) }   // since 1.1.0
 }
 ```
+
+`flush` pushes buffered records to the backend; the default does
+nothing, for sinks that do not buffer. `Chain::flush` calls it.
+`FileSink` flushes its writer.
 
 Pluggable backend that persists each record. Implementations might
 write to a file, ship records to a remote logging service, push to a
@@ -536,6 +543,12 @@ Source: `src/chain.rs`
   • `Chain::last_hash(&self) -> Digest`
   • `Chain::last_timestamp(&self) -> Timestamp`
   • `Chain::sink(&self) -> &S` &nbsp;/&nbsp; `Chain::sink_mut(&mut self) -> &mut S`
+  • `Chain::clock(&self) -> &C` (since 1.1.0)
+  • `Chain::flush(&mut self) -> Result<()>` (since 1.1.0)
+    Flush the sink's buffered records; `Error::Sink` on failure.
+  • `Chain::open_file(path, H, C) -> Result<(Self, OpenReport)>` (since 1.1.0, `std`)
+  • `Chain::open_file_repairing_tail(path, H, C) -> Result<(Self, OpenReport)>` (since 1.1.0, `std`)
+    See [`Chain::open_file` and `OpenReport`](#chainopen_file-and-openreport).
   • `Chain::into_parts(self) -> (H, S, C)`
 
 The append-only, hash-linked audit log. Generic over its three
@@ -833,6 +846,12 @@ Source: `src/sinks/file.rs` &nbsp; (requires `std`)
 
   • `FileSink::open_or_create(impl AsRef<Path>) -> io::Result<Self>`
     Open a file for append; create with format header if absent.
+  • `FileSink::open_or_create_private(impl AsRef<Path>) -> io::Result<Self>` (since 1.1.0)
+    As `open_or_create`, but a created file is owner-only on Unix
+    (`0o600`); on Windows it inherits its directory's access control.
+  • `FileSink::<BufWriter<File>>::sync(&mut self) -> io::Result<()>` (since 1.1.0)
+    Flush, then `File::sync_data`: every record appended so far survives
+    a power loss.
   • `FileSink::new(W) -> Self`
     Wrap an arbitrary `W: io::Write` already positioned correctly.
   • `FileSink::flush(&mut self) -> io::Result<()>`
@@ -864,6 +883,57 @@ chain.append(Actor::new("u"), Action::new("a"), Target::new("t"), Outcome::Succe
     .expect("append");
 let (_, mut sink, _) = chain.into_parts();
 sink.flush().expect("flush");
+```
+
+---
+
+### `Chain::open_file` and `OpenReport`
+
+Source: `src/open.rs` &nbsp; (requires `std`; since 1.1.0)
+
+```rust,ignore
+impl<H: Hasher, C: Clock> Chain<H, FileSink<BufWriter<File>>, C> {
+    pub fn open_file(path: impl AsRef<Path>, hasher: H, clock: C) -> Result<(Self, OpenReport)>;
+    pub fn open_file_repairing_tail(path: impl AsRef<Path>, hasher: H, clock: C)
+        -> Result<(Self, OpenReport)>;
+}
+
+pub struct OpenReport { /* records, created, cut */ }
+impl OpenReport {
+    pub const fn records(&self) -> u64;
+    pub const fn created(&self) -> bool;
+    pub fn cut(&self) -> Option<(u64, &Path)>;
+}
+```
+
+One call to open a chain file: a missing or empty file is created with
+the format header (owner-only on Unix), an existing one is read and
+every record verified, and the returned chain appends after the last
+record. The record length is checked against the file's size before
+any buffer is allocated, so a corrupt length cannot exhaust memory.
+
+| Outcome | `open_file` | `open_file_repairing_tail` |
+|---|---|---|
+| every record verifies | `Ok` | `Ok` |
+| the file ends inside a record (a crash while writing, a cut file) | `Error::Truncated`, file unchanged | the incomplete bytes are copied to `<path>.cut-<offset>` (owner-only, synced), then cut; `OpenReport::cut` says how many and where |
+| a record was changed, removed, or reordered | `Error::HashMismatch`, `LinkMismatch`, `IdMismatch`, or `NonMonotonicClock` | the same; nothing is cut |
+| a bad header or an undecodable record | `Error::InvalidFormat` | the same |
+| an I/O failure | `Error::Io` | the same |
+
+The incomplete bytes cannot be told apart from a record whose length was
+tampered with, which is why they are kept, not deleted, and why a caller
+should report `OpenReport::cut` prominently.
+
+```rust,no_run
+use audit_trail::{Action, Actor, Chain, MonotonicClock, Outcome, Sha256Hasher, SystemClock, Target};
+
+let clock = MonotonicClock::new(SystemClock::new());
+let (mut chain, report) = Chain::open_file("audit.log", Sha256Hasher::new(), clock)?;
+chain.clock().advance_past(chain.last_timestamp());
+println!("{} records verified", report.records());
+chain.append(Actor::new("u"), Action::new("login"), Target::new("session:a"), Outcome::Success)?;
+chain.sink_mut().sync().map_err(|_| audit_trail::Error::Io)?;
+# Ok::<(), audit_trail::Error>(())
 ```
 
 ---
@@ -994,6 +1064,33 @@ assert!(t.as_nanos() > 0);
 
 ---
 
+### `MonotonicClock<C>`
+
+Source: `src/clock.rs` &nbsp; (targets with 64-bit atomics; since 1.1.0)
+
+  • `MonotonicClock::new(C) -> Self` &nbsp;(`const fn`)
+  • `MonotonicClock::advance_past(&self, Timestamp)`
+  • `MonotonicClock::inner(&self) -> &C`
+  • `impl<C: Clock> Clock for MonotonicClock<C>`
+
+Wraps a clock so its timestamps never go back: each call returns the
+inner clock's time, or one nanosecond after the previous timestamp when
+the inner clock stepped back. A chain over a wall clock stays
+appendable through an NTP correction; its timestamps stay strictly
+increasing and run one nanosecond apart until the wall clock passes the
+last one again. After resuming a chain, call `advance_past` with the
+chain's last timestamp. `Sync`: the last timestamp is one atomic word.
+
+```rust
+use audit_trail::{Clock, MonotonicClock, SystemClock, Timestamp};
+
+let clock = MonotonicClock::new(SystemClock::new());
+clock.advance_past(Timestamp::from_nanos(u64::MAX / 2));
+assert!(clock.now().as_nanos() > u64::MAX / 2);
+```
+
+---
+
 ## Errors
 
 ### `Error`
@@ -1091,6 +1188,9 @@ Convenience alias used throughout the crate.
 ## Patterns
 
 ### Persisting and resuming across restarts
+
+Since 1.1.0, [`Chain::open_file`](#chainopen_file-and-openreport) does
+this in one call and verifies the file on the way. The manual form:
 
 ```rust,no_run
 use audit_trail::*;

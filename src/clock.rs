@@ -107,3 +107,98 @@ impl Clock for SystemClock {
         Timestamp::from_nanos(nanos)
     }
 }
+
+/// A [`Clock`] whose timestamps never go back: each call returns the inner
+/// clock's time, or one nanosecond after the previous timestamp when the
+/// inner clock stepped back (an NTP correction, a manual change).
+///
+/// [`Chain::append`](crate::Chain::append) refuses a timestamp that is not
+/// strictly greater than the last one, so a wall clock that steps back
+/// would stop the chain until the clock caught up. With this adapter the
+/// chain keeps appending; timestamps stay strictly increasing and run one
+/// nanosecond apart until the wall clock passes the last one again.
+///
+/// After resuming a chain, call [`MonotonicClock::advance_past`] with the
+/// chain's last timestamp, so the first new record is after it even if
+/// the wall clock is now behind.
+///
+/// `Sync`: the last timestamp is one atomic word.
+///
+/// # Example
+///
+/// ```
+/// use core::cell::Cell;
+/// use audit_trail::{Clock, MonotonicClock, Timestamp};
+///
+/// struct Steps(Cell<u64>);
+/// impl Clock for Steps {
+///     fn now(&self) -> Timestamp {
+///         let t = self.0.get();
+///         self.0.set(t.saturating_sub(10)); // runs backwards
+///         Timestamp::from_nanos(t)
+///     }
+/// }
+///
+/// let clock = MonotonicClock::new(Steps(Cell::new(100)));
+/// let a = clock.now();
+/// let b = clock.now();
+/// assert!(b > a);
+/// assert_eq!(b.as_nanos(), 101);
+/// ```
+#[cfg(target_has_atomic = "64")]
+#[derive(Debug, Default)]
+pub struct MonotonicClock<C> {
+    inner: C,
+    last: core::sync::atomic::AtomicU64,
+}
+
+#[cfg(target_has_atomic = "64")]
+impl<C> MonotonicClock<C> {
+    /// Wrap `inner`.
+    #[inline]
+    pub const fn new(inner: C) -> Self {
+        Self {
+            inner,
+            last: core::sync::atomic::AtomicU64::new(0),
+        }
+    }
+
+    /// Make every later timestamp greater than `timestamp` (for example a
+    /// resumed chain's [`last_timestamp`](crate::Chain::last_timestamp)).
+    #[inline]
+    pub fn advance_past(&self, timestamp: Timestamp) {
+        let _previous = self
+            .last
+            .fetch_max(timestamp.as_nanos(), core::sync::atomic::Ordering::AcqRel);
+    }
+
+    /// The wrapped clock.
+    #[inline]
+    pub const fn inner(&self) -> &C {
+        &self.inner
+    }
+}
+
+#[cfg(target_has_atomic = "64")]
+impl<C: Clock> Clock for MonotonicClock<C> {
+    fn now(&self) -> Timestamp {
+        use core::sync::atomic::Ordering;
+
+        let now = self.inner.now().as_nanos();
+        let mut last = self.last.load(Ordering::Acquire);
+        loop {
+            let next = if now > last {
+                now
+            } else {
+                last.saturating_add(1)
+            };
+            match self
+                .last
+                .compare_exchange_weak(last, next, Ordering::AcqRel, Ordering::Acquire)
+            {
+                Ok(_) => return Timestamp::from_nanos(next),
+                Err(actual) => last = actual,
+            }
+        }
+    }
+}

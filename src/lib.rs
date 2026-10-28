@@ -53,6 +53,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(missing_docs)]
+#![forbid(unsafe_code)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unused_must_use)]
 #![deny(unused_results)]
@@ -83,6 +84,8 @@ mod verify;
 
 #[cfg(feature = "alloc")]
 pub mod codec;
+#[cfg(feature = "std")]
+mod open;
 #[cfg(feature = "alloc")]
 mod owned;
 #[cfg(feature = "std")]
@@ -94,6 +97,8 @@ mod sinks;
 mod hashers;
 
 pub use chain::Chain;
+#[cfg(target_has_atomic = "64")]
+pub use clock::MonotonicClock;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use clock::SystemClock;
@@ -115,6 +120,10 @@ pub use sinks::MemorySink;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use readers::FileReader;
+
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use open::OpenReport;
 
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]

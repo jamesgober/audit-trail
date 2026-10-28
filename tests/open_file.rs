@@ -194,7 +194,7 @@ fn a_corrupt_length_cannot_allocate_past_the_file() {
     append(&mut chain, 1);
     drop(chain);
     let mut file = OpenOptions::new().append(true).open(&path).unwrap();
-    file.write_all(&[0xFF, 0xFF, 0xFF, 0xF0, 1, 2, 3]).unwrap();
+    file.write_all(&[0xff, 0xff, 0xff, 0xf0, 1, 2, 3]).unwrap();
     drop(file);
     let error = Chain::open_file(&path, Sha256Hasher::new(), tick(10)).err();
     assert_eq!(error, Some(Error::Truncated));

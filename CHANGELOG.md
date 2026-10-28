@@ -9,13 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] - 2026-10-28
+
+Additive: opening a chain file in one verified call, owner-only files,
+durability, and a clock that never goes back. No breaking change; the
+wire format is unchanged.
+
 ### Added
 
-### Changed
-
-### Fixed
+- `Chain::open_file` and `Chain::open_file_repairing_tail`, with
+  `OpenReport`: create or open a chain file, verify every record, and
+  resume at the tail. A file that ends inside a record is
+  `Error::Truncated`, distinct from tampering; the repairing variant
+  keeps the incomplete bytes in `<path>.cut-<offset>` before cutting them.
+- `FileSink::open_or_create_private`: a created file is owner-only on
+  Unix (`0o600`).
+- `FileSink::sync`: flush and `sync_data`.
+- `Sink::flush` (provided method, default no-op) and `Chain::flush`.
+- `Chain::clock`.
+- `MonotonicClock<C>`: timestamps that never go back, with
+  `advance_past` for resumed chains.
 
 ### Security
+
+- `#![forbid(unsafe_code)]` at the crate root (the crate already had no
+  `unsafe`).
+- `open_file` checks a record's length against the file's size before
+  allocating, so a corrupt length cannot exhaust memory.
 
 ---
 
@@ -370,5 +392,6 @@ existing public item changed signature, was renamed, or was removed.
 - REPS compliance baseline.
 - CI for Linux/macOS/Windows on stable and MSRV.
 
+[1.1.0]: https://github.com/jamesgober/audit-trail/compare/v1.0.1...v1.1.0
 [0.2.1]: https://github.com/jamesgober/audit-trail/releases/tag/v0.2.1
 [0.2.0]: https://github.com/jamesgober/audit-trail/releases/tag/v0.2.0

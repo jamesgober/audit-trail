@@ -213,6 +213,25 @@ where
         Ok(id)
     }
 
+    /// The chain's clock (for example to call
+    /// [`MonotonicClock::advance_past`](crate::MonotonicClock::advance_past)
+    /// after resuming).
+    #[inline]
+    pub const fn clock(&self) -> &C {
+        &self.clock
+    }
+
+    /// Flush the sink's buffered records ([`Sink::flush`]). The chain's
+    /// state does not change.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Sink`] when the sink cannot flush.
+    #[inline]
+    pub fn flush(&mut self) -> Result<()> {
+        self.sink.flush().map_err(Error::Sink)
+    }
+
     /// Consume the chain and return its three pluggable components.
     #[inline]
     pub fn into_parts(self) -> (H, S, C) {

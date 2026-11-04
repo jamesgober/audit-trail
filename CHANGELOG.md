@@ -9,9 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] - 2026-11-04
+
 A security and edge-case review of the whole crate before the suites
 that use it reach 1.0. No public API change; the wire format and every
-existing hash are unchanged (pinned by a test).
+existing hash are unchanged (pinned by a test). A minor release rather
+than a patch: appends and opens that 1.1.0 accepted are now refused (a
+field containing `0x1f`, a symbolic link, a file others can write, a
+second writer), and `libc` is a new dependency on Unix.
 
 ### Security
 
@@ -165,7 +172,9 @@ wire format is unchanged.
   tightened from `.dev/*` to `.dev/`. Cross-references in
   `docs/API.md` updated accordingly.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/jamesgober/audit-trail/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/jamesgober/audit-trail/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/jamesgober/audit-trail/releases/tag/v1.0.1
 
 ---

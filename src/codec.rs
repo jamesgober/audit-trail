@@ -44,14 +44,13 @@
 //! ...     target       UTF-8 bytes
 //! ```
 
-use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::clock::Timestamp;
 use crate::error::{Error, Result};
 use crate::hash::{Digest, HASH_LEN};
 use crate::owned::OwnedRecord;
-use crate::record::{Outcome, Record, RecordId};
+use crate::record::{Action, Actor, Outcome, Record, RecordId, Target};
 
 /// File-format magic bytes. Appear at the start of every chain file.
 pub const FORMAT_MAGIC: &[u8; 8] = b"AUDTRAIL";
@@ -79,8 +78,8 @@ pub fn write_file_header(out: &mut Vec<u8>) {
 ///
 /// # Errors
 ///
-/// * [`Error::Truncated`] — `bytes.len() < FILE_HEADER_LEN`.
-/// * [`Error::InvalidFormat`] — bad magic or unknown version.
+/// * [`Error::Truncated`] - `bytes.len() < FILE_HEADER_LEN`.
+/// * [`Error::InvalidFormat`] - bad magic or unknown version.
 pub fn verify_file_header(bytes: &[u8]) -> Result<()> {
     if bytes.len() < FILE_HEADER_LEN {
         return Err(Error::Truncated);
@@ -102,7 +101,7 @@ pub fn verify_file_header(bytes: &[u8]) -> Result<()> {
 ///
 /// # Errors
 ///
-/// * [`Error::InvalidFormat`] — any string field's UTF-8 byte length, or
+/// * [`Error::InvalidFormat`] - any string field's UTF-8 byte length, or
 ///   the resulting body length, would not fit in a `u32`. In practice
 ///   audit fields are tiny; the check is here so that absurd inputs
 ///   produce a typed error rather than silent truncation.
@@ -118,15 +117,17 @@ pub fn encode_record(record: &Record<'_>, out: &mut Vec<u8>) -> Result<()> {
         return Err(Error::InvalidFormat);
     }
 
-    let body_len =
-        RECORD_FIXED_LEN + 4 + actor_bytes.len() + 4 + action_bytes.len() + 4 + target_bytes.len();
-    if body_len > u32::MAX as usize {
-        return Err(Error::InvalidFormat);
-    }
+    // Summed in `u64`: three fields near `u32::MAX` would overflow a
+    // 32-bit `usize`.
+    let body_len = (RECORD_FIXED_LEN + 12) as u64
+        + actor_bytes.len() as u64
+        + action_bytes.len() as u64
+        + target_bytes.len() as u64;
+    let body_len = u32::try_from(body_len).map_err(|_| Error::InvalidFormat)?;
 
-    out.reserve(4 + body_len);
+    out.reserve((body_len as usize).saturating_add(4));
 
-    out.extend_from_slice(&(body_len as u32).to_be_bytes());
+    out.extend_from_slice(&body_len.to_be_bytes());
     out.extend_from_slice(&record.id().as_u64().to_be_bytes());
     out.extend_from_slice(&record.timestamp().as_nanos().to_be_bytes());
     out.push(record.outcome().as_u8());
@@ -148,11 +149,19 @@ pub fn encode_record(record: &Record<'_>, out: &mut Vec<u8>) -> Result<()> {
 ///
 /// # Errors
 ///
-/// * [`Error::Truncated`] — input ended before a full frame could be read.
-/// * [`Error::InvalidFormat`] — length prefix would overflow, fixed
+/// * [`Error::Truncated`] - input ended before a full frame could be read.
+/// * [`Error::InvalidFormat`] - length prefix would overflow, fixed
 ///   fields are short, UTF-8 fields are invalid, or the body length does
 ///   not match the sum of its parts.
 pub fn decode_record(bytes: &[u8]) -> Result<(OwnedRecord, usize)> {
+    let (record, consumed) = decode_frame(bytes)?;
+    Ok((OwnedRecord::from_record(&record), consumed))
+}
+
+/// As [`decode_record`], but the record borrows its string fields from
+/// `bytes` instead of copying them, so decoding allocates nothing. Used to
+/// verify a chain file on open.
+pub(crate) fn decode_frame(bytes: &[u8]) -> Result<(Record<'_>, usize)> {
     if bytes.len() < 4 {
         return Err(Error::Truncated);
     }
@@ -184,16 +193,16 @@ pub fn decode_record(bytes: &[u8]) -> Result<(OwnedRecord, usize)> {
         return Err(Error::InvalidFormat);
     }
 
-    let record = OwnedRecord {
+    let record = Record::new(
         id,
         timestamp,
-        actor,
-        action,
-        target,
+        Actor::new(actor),
+        Action::new(action),
+        Target::new(target),
         outcome,
-        prev_hash: Digest::from_bytes(prev_hash),
-        hash: Digest::from_bytes(hash),
-    };
+        Digest::from_bytes(prev_hash),
+        Digest::from_bytes(hash),
+    );
     Ok((record, frame_end))
 }
 
@@ -207,7 +216,7 @@ fn decode_outcome(byte: u8) -> Result<Outcome> {
     }
 }
 
-fn read_string_field(body: &[u8], cursor: &mut usize) -> Result<String> {
+fn read_string_field<'a>(body: &'a [u8], cursor: &mut usize) -> Result<&'a str> {
     if body.len() < cursor.checked_add(4).ok_or(Error::InvalidFormat)? {
         return Err(Error::InvalidFormat);
     }
@@ -220,7 +229,7 @@ fn read_string_field(body: &[u8], cursor: &mut usize) -> Result<String> {
     let bytes = &body[*cursor..end];
     let s = core::str::from_utf8(bytes).map_err(|_| Error::InvalidFormat)?;
     *cursor = end;
-    Ok(String::from(s))
+    Ok(s)
 }
 
 fn read_u32(bytes: &[u8]) -> u32 {

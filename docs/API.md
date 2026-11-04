@@ -18,14 +18,14 @@
 #### Example Pointers
 
 Runnable end-to-end demonstrations. Each is a single self-contained
-file under [`examples/`](../examples/) — run with
+file under [`examples/`](../examples/) - run with
 `cargo run --example <name> --features sha2`.
 
-- [`examples/in_memory.rs`](../examples/in_memory.rs) — build a SHA-256
+- [`examples/in_memory.rs`](../examples/in_memory.rs) - build a SHA-256
   hash-chained log in memory, print it, verify it.
-- [`examples/file_log.rs`](../examples/file_log.rs) — write a chain to
+- [`examples/file_log.rs`](../examples/file_log.rs) - write a chain to
   a file via `FileSink`, close, reopen, replay through `Verifier`.
-- [`examples/tamper_detection.rs`](../examples/tamper_detection.rs) —
+- [`examples/tamper_detection.rs`](../examples/tamper_detection.rs) -
   build a chain, mutate one record, prove the `Verifier` rejects it
   with the exact `RecordId` of the offending entry.
 
@@ -71,6 +71,7 @@ file under [`examples/`](../examples/) — run with
   - [`SinkError`](#sinkerror)
   - [`Result<T>`](#resultt)
 - [Patterns](#patterns)
+- [What a chain proves](#what-a-chain-proves)
 - [Notes](#notes)
 
 ---
@@ -119,7 +120,7 @@ Source: `src/record.rs`
   • `Record::prev_hash(&self) -> Digest`
   • `Record::hash(&self) -> Digest`
 
-A single audited event in the chain — the canonical
+A single audited event in the chain - the canonical
 `who / what / when / where / result` tuple plus the chain links
 (`prev_hash`, `hash`). `Record` is intentionally **borrowed**: its string
 fields hold `&str` references rather than owning allocations, so the
@@ -163,7 +164,7 @@ Owned counterpart to [`Record`]. Holds `String`-backed `actor`,
 `action`, and `target` fields plus the rest of the chain links so it
 can outlive the call that produced it.
 
-All eight fields are `pub` — their shape is stable for `1.x` and
+All eight fields are `pub` - their shape is stable for `1.x` and
 mirrors `Record`'s field layout exactly. Construct an `OwnedRecord`
 either by converting a borrowed `Record` (via `from_record` /
 `From<&Record<'_>>`) or by struct-literal syntax when reconstructing
@@ -171,7 +172,7 @@ records from external storage.
 
 `OwnedRecord` is `Clone`, `Debug`, `PartialEq`, `Eq`, and `Hash`.
 
-Example — round-trip:
+Example - round-trip:
 ```rust
 # use audit_trail::*;
 let borrowed = Record::new(
@@ -184,7 +185,7 @@ let owned = OwnedRecord::from_record(&borrowed);
 assert_eq!(owned.as_record(), borrowed);
 ```
 
-Example — reconstructing from a database row:
+Example - reconstructing from a database row:
 ```rust,no_run
 # use audit_trail::*;
 # fn row_value<T>(_: &str) -> T { unimplemented!() }
@@ -208,7 +209,7 @@ let r = OwnedRecord {
 
 Source: `src/record.rs`
 
-  • `RecordId::GENESIS` — `const`, the first id (`0`).
+  • `RecordId::GENESIS` - `const`, the first id (`0`).
   • `RecordId::from_u64(u64) -> Self`
   • `RecordId::as_u64(self) -> u64`
 
@@ -277,11 +278,11 @@ pub enum Outcome {
 }
 ```
 
-  • `Outcome::as_u8(self) -> u8` — stable numeric encoding for the codec.
+  • `Outcome::as_u8(self) -> u8` - stable numeric encoding for the codec.
 
 Outcome of an audited action. `#[non_exhaustive]` so additional outcomes
 may be added in `1.x` without a major bump. The numeric encoding via
-`as_u8()` is part of the on-disk wire format and is frozen — new
+`as_u8()` is part of the on-disk wire format and is frozen - new
 variants will use values 4+.
 
 Example:
@@ -298,7 +299,7 @@ assert_eq!(Outcome::Denied.as_u8(), 2);
 
 Source: `src/clock.rs`
 
-  • `Timestamp::EPOCH` — `const`, the Unix epoch as a timestamp (`0`).
+  • `Timestamp::EPOCH` - `const`, the Unix epoch as a timestamp (`0`).
   • `Timestamp::from_nanos(u64) -> Self`
   • `Timestamp::as_nanos(self) -> u64`
 
@@ -321,11 +322,11 @@ assert!(t > Timestamp::EPOCH);
 
 Source: `src/hash.rs`
 
-  • `Digest::ZERO` — `const`, all-zero 32-byte digest.
+  • `Digest::ZERO` - `const`, all-zero 32-byte digest.
   • `Digest::from_bytes([u8; HASH_LEN]) -> Self`
   • `Digest::as_bytes(&self) -> &[u8; HASH_LEN]`
   • `Digest::into_bytes(self) -> [u8; HASH_LEN]`
-  • `impl LowerHex for Digest` — hex rendering via `{:x}`
+  • `impl LowerHex for Digest` - hex rendering via `{:x}`
   • `impl AsRef<[u8]> for Digest`
 
 Fixed-size 32-byte hash output. Used as the `prev_hash` and `hash`
@@ -378,24 +379,24 @@ friendly: no allocations, no boxed trait objects, no `dyn`.
 
 Method semantics:
 
-- **`reset(&mut self)`** — return the hasher to its initial state.
+- **`reset(&mut self)`** - return the hasher to its initial state.
   Called at the start of each record's hashing.
-- **`update(&mut self, bytes: &[u8])`** — absorb a byte slice into the
+- **`update(&mut self, bytes: &[u8])`** - absorb a byte slice into the
   hash state. Called multiple times per record (once per field).
-- **`finalize(&mut self, out: &mut Digest)`** — write the digest into
+- **`finalize(&mut self, out: &mut Digest)`** - write the digest into
   `out`. After finalization the hasher is left in an unspecified state
   and must be `reset` before being used again.
 
 The trait is **intentionally open**: external crates implement it to
-plug in any hash function. The crate ships two reference impls —
+plug in any hash function. The crate ships two reference impls -
 [`Sha256Hasher`](#sha256hasher) and [`Blake3Hasher`](#blake3hasher).
 
-Example — implementing a custom hasher:
+Example - implementing a custom hasher:
 ```rust
 use audit_trail::{Digest, Hasher, HASH_LEN};
 
 /// Trivially-insecure XOR-fold hasher. Deterministic and 32 bytes
-/// wide — enough to drive `Chain::append` in tests.
+/// wide - enough to drive `Chain::append` in tests.
 struct XorHasher([u8; HASH_LEN], usize);
 
 impl Hasher for XorHasher {
@@ -435,14 +436,14 @@ queue, or buffer in memory. Sinks see records in chain order.
 
 **Error contract:** if `write` returns `Err(SinkError)`, `Chain::append`
 wraps the error as `Error::Sink` and propagates it **without advancing
-the chain's internal state**. The caller may retry — the next `append`
+the chain's internal state**. The caller may retry - the next `append`
 will produce the same `RecordId` and `prev_hash`.
 
 The trait is **intentionally open** for users to implement. The crate
-ships two reference impls — [`MemorySink`](#memorysink) and
+ships two reference impls - [`MemorySink`](#memorysink) and
 [`FileSink<W>`](#filesinkw).
 
-Example — implementing a counting sink:
+Example - implementing a counting sink:
 ```rust
 use audit_trail::{Record, Sink, SinkError};
 
@@ -457,7 +458,7 @@ impl Sink for CountingSink {
 }
 ```
 
-Example — implementing a sink that drops records past a capacity limit:
+Example - implementing a sink that drops records past a capacity limit:
 ```rust
 use audit_trail::{Record, Sink, SinkError};
 
@@ -492,9 +493,9 @@ monotonicity and returns `Error::NonMonotonicClock` if a regression is
 observed.
 
 The trait is **intentionally open**. The crate ships one reference
-impl — [`SystemClock`](#systemclock).
+impl - [`SystemClock`](#systemclock).
 
-Example — a tick-by-one clock useful for tests:
+Example - a tick-by-one clock useful for tests:
 ```rust
 use std::cell::Cell;
 use audit_trail::{Clock, Timestamp};
@@ -510,7 +511,7 @@ impl Clock for TickClock {
 }
 ```
 
-Example — a clock backed by `std::time::Instant` for strict monotonicity:
+Example - a clock backed by `std::time::Instant` for strict monotonicity:
 ```rust,no_run
 use std::time::Instant;
 use audit_trail::{Clock, Timestamp};
@@ -552,7 +553,7 @@ Source: `src/chain.rs`
   • `Chain::into_parts(self) -> (H, S, C)`
 
 The append-only, hash-linked audit log. Generic over its three
-pluggable components — a `Hasher`, a `Sink`, and a `Clock`. Every
+pluggable components - a `Hasher`, a `Sink`, and a `Clock`. Every
 successful `append`:
 
 1. Asks the clock for the current timestamp (enforces strict monotonicity).
@@ -568,14 +569,19 @@ chains.
 
 Errors from `append`:
 
-- `Error::NonMonotonicClock` — clock returned a timestamp not strictly
+- `Error::InvalidFormat` - `actor`, `action` or `target` contains the
+  byte `0x1f`, the separator in the hashed bytes. Text containing it
+  could be moved from one field to the next without changing the hash,
+  so the field is refused (checked before the clock is read).
+- `Error::NonMonotonicClock` - clock returned a timestamp not strictly
   greater than the previous record's.
-- `Error::Capacity` — id counter would overflow `u64` (unreachable in
+- `Error::Capacity` - id counter would overflow `u64` (unreachable in
   practice).
-- `Error::Sink(_)` — the sink rejected the write. State is preserved;
-  the caller may retry.
+- `Error::Sink(_)` - the sink rejected the write. State is preserved;
+  the caller may retry, unless the sink refuses further writes after a
+  failure it cannot undo (`FileSink` does: `SinkError::Closed`).
 
-Example — minimal usage with the bundled reference impls:
+Example - minimal usage with the bundled reference impls:
 ```rust,no_run
 use audit_trail::{
     Action, Actor, Chain, MemorySink, Outcome, Sha256Hasher, SystemClock, Target,
@@ -591,7 +597,7 @@ let id = chain.append(
 println!("Appended record id {}", id.as_u64());
 ```
 
-Example — resuming after restart:
+Example - resuming after restart:
 ```rust,no_run
 use audit_trail::*;
 
@@ -615,7 +621,7 @@ let mut chain = Chain::resume(
 
 Source: `src/verify.rs`
 
-  • `Verifier::new(H) -> Self` — verify from genesis.
+  • `Verifier::new(H) -> Self` - verify from genesis.
   • `Verifier::resume(H, next_id, last_hash, last_timestamp) -> Self`
   • `Verifier::with_strict_timestamps(self, bool) -> Self`
   • `Verifier::verify(&Record<'_>) -> Result<()>`
@@ -625,31 +631,33 @@ Source: `src/verify.rs`
   • `Verifier::into_hasher(self) -> H`
 
 Replays a chain of records and proves its hash linkage is intact. The
-verifier is **stateful and sequential** — feed records in chain order.
+verifier is **stateful and sequential** - feed records in chain order.
 A failure leaves the verifier's cursor at the last accepted record;
 inspect `next_id` / `last_hash` to learn how far verification got.
 
 Per record, four invariants are checked:
 
-1. **Id linkage** — the record's id is the expected next id.
-2. **Prev-hash linkage** — `prev_hash` equals the previous record's
+1. **Id linkage** - the record's id is the expected next id.
+2. **Prev-hash linkage** - `prev_hash` equals the previous record's
    `hash` (or `Digest::ZERO` for the genesis record).
-3. **Timestamp monotonicity** — strict by default; toggle with
+3. **Timestamp monotonicity** - strict by default; toggle with
    `with_strict_timestamps(false)`.
-4. **Hash integrity** — the stored `hash` equals the digest recomputed
+4. **Hash integrity** - the stored `hash` equals the digest recomputed
    from the record's fields.
 
 Errors:
 
-- `Error::IdMismatch(RecordId)` — id is not the expected next.
-- `Error::LinkMismatch(RecordId)` — `prev_hash` does not chain.
-- `Error::HashMismatch(RecordId)` — stored `hash` ≠ recomputed.
-- `Error::NonMonotonicClock` — timestamp regression (strict mode only).
+- `Error::IdMismatch(RecordId)` - id is not the expected next.
+- `Error::LinkMismatch(RecordId)` - `prev_hash` does not chain.
+- `Error::HashMismatch(RecordId)` - stored `hash` ≠ recomputed.
+- `Error::InvalidFormat` - a string field contains `0x1f`, the hash's
+  field separator; `Chain::append` never writes such a record.
+- `Error::NonMonotonicClock` - timestamp regression (strict mode only).
 
 Each variant carries the failing record's id (or, for clock errors,
 the verifier's cursor identifies it).
 
-Example — verify a stored chain:
+Example - verify a stored chain:
 ```rust,no_run
 use audit_trail::{FileReader, Sha256Hasher, Verifier};
 
@@ -661,7 +669,7 @@ for record in FileReader::open("audit.log").expect("open") {
 println!("Verified {} records", verifier.next_id().as_u64());
 ```
 
-Example — relaxed-mode verification of a chain with coarser
+Example - relaxed-mode verification of a chain with coarser
 timestamps:
 ```rust,no_run
 # use audit_trail::*;
@@ -737,8 +745,8 @@ pub fn verify_file_header(bytes: &[u8]) -> Result<()>;
 Verify that `bytes` begins with a valid format header.
 
 Errors:
-- `Error::Truncated` — `bytes.len() < FILE_HEADER_LEN`.
-- `Error::InvalidFormat` — bad magic or unknown format version.
+- `Error::Truncated` - `bytes.len() < FILE_HEADER_LEN`.
+- `Error::InvalidFormat` - bad magic or unknown format version.
 
 Example:
 ```rust
@@ -761,7 +769,7 @@ Encode `record` into a length-prefixed frame appended to `out`. Writes
 `4 + body_len` bytes.
 
 Errors:
-- `Error::InvalidFormat` — any string field's UTF-8 length, or the
+- `Error::InvalidFormat` - any string field's UTF-8 length, or the
   resulting body length, would not fit in a `u32`.
 
 Example:
@@ -790,11 +798,11 @@ Returns the decoded `OwnedRecord` plus the number of bytes consumed,
 so the caller can decode a stream by advancing past each frame.
 
 Errors:
-- `Error::Truncated` — input ended before a complete frame.
-- `Error::InvalidFormat` — bad length prefix, fixed-field shortfall,
+- `Error::Truncated` - input ended before a complete frame.
+- `Error::InvalidFormat` - bad length prefix, fixed-field shortfall,
   invalid UTF-8, or body length / sum-of-parts mismatch.
 
-Example — sequential stream decode:
+Example - sequential stream decode:
 ```rust
 # use audit_trail::*;
 # let buf: Vec<u8> = Vec::new();
@@ -825,7 +833,7 @@ Source: `src/sinks/memory.rs` &nbsp; (requires `alloc`)
 
 In-memory sink backed by `Vec<OwnedRecord>`. Intended for tests,
 prototypes, and short-lived buffering. Holds the entire chain in
-memory — not suitable for long-running production workloads.
+memory - not suitable for long-running production workloads.
 
 Example:
 ```rust,no_run
@@ -859,19 +867,30 @@ Source: `src/sinks/file.rs` &nbsp; (requires `std`)
 
 Append-only file-backed sink. Wraps any `W: io::Write` and serialises
 records through the stable [`codec`](#codec-module). The format header
-is written exactly once — by `open_or_create` when the target file is
+is written exactly once - by `open_or_create` when the target file is
 empty. Reopening an existing path validates the header and positions
 the writer at end-of-file.
 
 Writes are **not** auto-flushed. Call `flush` at appropriate
 checkpoints, or wrap the inner writer in a `BufWriter` (which
-`open_or_create` does) and rely on `Drop`.
+`open_or_create` does) and rely on `Drop`. A created file's header is
+synced, with its directory entry on Unix.
+
+`open_or_create` neither verifies the records already in the file nor
+stops a second writer; `Chain::open_file` does both.
+`open_or_create_private` does not follow a symbolic link.
+
+After the first I/O error from a write, flush or sync, the sink refuses
+every later one: part of a record may be in the file, and a record
+written behind it could never be read back. Drop the chain and open the
+file again (`Chain::open_file_repairing_tail` cuts a torn last record).
 
 Errors:
 - `open_or_create` surfaces `std::io::Error` for file-system failures;
   an invalid header is reported as `io::ErrorKind::InvalidData`.
 - `Sink::write` maps internal errors to `SinkError::Io` /
-  `SinkError::Other`.
+  `SinkError::Other`, and returns `SinkError::Closed` after an earlier
+  I/O error; `flush` and `sync` then fail with `io::ErrorKind::Other`.
 
 Example:
 ```rust,no_run
@@ -907,22 +926,45 @@ impl OpenReport {
 ```
 
 One call to open a chain file: a missing or empty file is created with
-the format header (owner-only on Unix), an existing one is read and
-every record verified, and the returned chain appends after the last
-record. The record length is checked against the file's size before
-any buffer is allocated, so a corrupt length cannot exhaust memory.
+the format header (owner-only on Unix; header and directory entry
+synced), an existing one is read and every record verified, and the
+returned chain appends after the last record. The record length is
+checked against the file's size before any buffer is allocated, so a
+corrupt length cannot exhaust memory, and records are decoded in place
+(no allocation per record).
+
+The file must be private:
+
+- `path` must be a regular file; a symbolic link is refused as it is
+  opened (`O_NOFOLLOW` on Unix; checked just after the open elsewhere).
+- On Unix, an existing file its group or others can read is made
+  owner-only (`fchmod` on the open handle); one they can write is
+  refused with `Error::Io`.
+
+One writer per file: built with Rust 1.89 or later, the chain holds an
+exclusive lock on `<path>.lock` (owner-only, never removed) for as long
+as it lives, so a second `open_file` of the path, in any process, fails
+with `Error::Io`. With an older compiler, or a file system without
+locks, the caller keeps to one writer. In every build, a file that grows
+while it is being verified is refused.
 
 | Outcome | `open_file` | `open_file_repairing_tail` |
 |---|---|---|
 | every record verifies | `Ok` | `Ok` |
-| the file ends inside a record (a crash while writing, a cut file) | `Error::Truncated`, file unchanged | the incomplete bytes are copied to `<path>.cut-<offset>` (owner-only, synced), then cut; `OpenReport::cut` says how many and where |
+| the file ends inside a record or the header, or in zeros where a record should start (a crash while writing, a cut file) | `Error::Truncated`, file unchanged | the incomplete bytes are copied to `<path>.cut-<offset>` (`.cut-<offset>.<n>` when taken; owner-only, synced), then cut; a file cut inside its header gets a fresh one; `OpenReport::cut` says how many bytes and where |
 | a record was changed, removed, or reordered | `Error::HashMismatch`, `LinkMismatch`, `IdMismatch`, or `NonMonotonicClock` | the same; nothing is cut |
 | a bad header or an undecodable record | `Error::InvalidFormat` | the same |
-| an I/O failure | `Error::Io` | the same |
+| an I/O failure, a symbolic link, a file others can write, a file locked by another chain, a file that grew while it was read | `Error::Io` | the same |
 
 The incomplete bytes cannot be told apart from a record whose length was
 tampered with, which is why they are kept, not deleted, and why a caller
 should report `OpenReport::cut` prominently.
+
+Verification cannot see records removed from the end of the file, or a
+file rewritten by someone able to recompute the hashes. Keep the tail
+(`chain.next_id()`, `chain.last_hash()`) somewhere the file's writer
+cannot change and compare it after opening; see
+[What a chain proves](#what-a-chain-proves).
 
 ```rust,no_run
 use audit_trail::{Action, Actor, Chain, MonotonicClock, Outcome, Sha256Hasher, SystemClock, Target};
@@ -955,14 +997,20 @@ error the iterator terminates: subsequent calls return `None`.
 The reader reuses a single internal scratch buffer across records, so
 iteration costs three `String` allocations per record (for `actor`,
 `action`, `target`) plus the frame buffer's amortised zero-cost reuse.
+The buffer grows with the bytes actually read: a length prefix claiming
+more than the file holds costs only what is there.
+
+The reader decodes; it does not verify. Replay through a `Verifier`, or
+use `Chain::open_file`.
 
 Errors yielded by `next()`:
-- `Error::Truncated` — input ended mid-record.
-- `Error::InvalidFormat` — bad magic, version, or body bytes.
-- `Error::Io` — underlying I/O failure (detail suppressed for `Copy` /
+- `Error::Truncated` - input ended mid-record, including inside a
+  record's 4-byte length prefix.
+- `Error::InvalidFormat` - bad magic, version, or body bytes.
+- `Error::Io` - underlying I/O failure (detail suppressed for `Copy` /
   `no_std` compatibility).
 
-Example — replay-and-verify:
+Example - replay-and-verify:
 ```rust,no_run
 use audit_trail::{FileReader, Sha256Hasher, Verifier};
 
@@ -1133,7 +1181,7 @@ Variant guide:
 | `InvalidFormat` | Encoded bytes did not parse (bad magic/version/UTF-8/length). |
 | `Io` | Underlying I/O failure (detail suppressed). |
 
-Example — handling specific variants:
+Example - handling specific variants:
 ```rust,no_run
 # use audit_trail::*;
 # fn append() -> Result<RecordId> { unimplemented!() }
@@ -1205,7 +1253,7 @@ use audit_trail::*;
     sink.flush().expect("flush");
 }
 
-// Reader session — discover the tail to resume from.
+// Reader session - discover the tail to resume from.
 let mut last: Option<OwnedRecord> = None;
 for record in FileReader::open("audit.log").expect("open") {
     last = Some(record.expect("decode"));
@@ -1213,7 +1261,7 @@ for record in FileReader::open("audit.log").expect("open") {
 let last = last.expect("at least one record");
 let next_id = RecordId::from_u64(last.id.as_u64() + 1);
 
-// Writer session 2 — resume.
+// Writer session 2 - resume.
 let sink = FileSink::open_or_create("audit.log").expect("reopen");
 let mut chain = Chain::resume(
     Sha256Hasher::new(), sink, SystemClock::new(),
@@ -1245,7 +1293,7 @@ struct PgSink { /* connection, prepared stmt, etc. */ }
 
 impl Sink for PgSink {
     fn write(&mut self, record: &Record<'_>) -> Result<(), SinkError> {
-        // Stable codec — write the encoded bytes into a `BYTEA` column.
+        // Stable codec - write the encoded bytes into a `BYTEA` column.
         let mut buf = Vec::with_capacity(256);
         codec::encode_record(record, &mut buf).map_err(|_| SinkError::Other)?;
         // exec("INSERT INTO audit (id, ts, payload) VALUES ($1, $2, $3)", …)
@@ -1260,6 +1308,31 @@ impl Sink for PgSink {
 See [`examples/tamper_detection.rs`](../examples/tamper_detection.rs)
 for a full runnable demonstration of the `Verifier` rejecting a mutated
 record with the exact `RecordId` of the offending entry.
+
+---
+
+## What a chain proves
+
+Verifying a chain (`Verifier`, `Chain::open_file`) proves that every
+record read is the one the chain appended, in order: a changed,
+inserted, removed or reordered record fails at that record, and so does
+a record whose text was moved from one field to the next.
+
+It does not prove, on its own:
+
+- **that nothing was removed from the end.** A chain cut after any
+  record still verifies. Keep the tail (`next_id`, `last_hash`)
+  somewhere the file's writer cannot change, and compare it after
+  opening.
+- **that the file was not rewritten.** The hashes are not keyed: anyone
+  who can write the file can rebuild the chain from any record onward,
+  or swap in another valid chain. The same copy of the tail detects
+  that; so does a `Hasher` keyed with a secret held apart from the file
+  (BLAKE3's keyed mode, HMAC-SHA-256), plugged in through the `Hasher`
+  trait.
+- **when a record was written.** Timestamps come from the chain's
+  `Clock` and are checked only to increase. A wall clock stepped far
+  forward carries a `MonotonicClock` with it until real time catches up.
 
 ---
 

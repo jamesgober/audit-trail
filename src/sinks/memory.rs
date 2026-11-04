@@ -11,7 +11,7 @@ use crate::sink::Sink;
 ///
 /// Intended for tests, prototypes, and short-lived buffering. Holds the
 /// entire chain in memory, so it is not suitable for long-running
-/// production workloads — use a file-backed or streaming sink instead.
+/// production workloads - use a file-backed or streaming sink instead.
 ///
 /// # Example
 ///

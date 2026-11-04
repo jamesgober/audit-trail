@@ -14,7 +14,7 @@ use std::path::PathBuf;
 
 use audit_trail::{
     Action, Actor, Chain, Clock, Error, FileReader, FileSink, Outcome, RecordId, Sha256Hasher,
-    Target, Timestamp, Verifier,
+    SinkError, Target, Timestamp, Verifier,
 };
 
 struct TickClock(Cell<u64>);
@@ -229,4 +229,90 @@ fn file_reader_handles_truncated_tail() {
     assert!(matches!(result, Err(Error::Truncated)), "got {result:?}");
 
     let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn file_reader_reports_a_file_cut_inside_a_length_prefix() {
+    for extra in 1..4_usize {
+        let path = temp_path(&format!("cut-prefix-{extra}"));
+        let _ = std::fs::remove_file(&path);
+        let sink = FileSink::open_or_create(&path).expect("create");
+        let mut chain = Chain::new(Sha256Hasher::new(), sink, TickClock::new(1));
+        append_three(&mut chain);
+        let (_, mut sink, _) = chain.into_parts();
+        sink.flush().expect("flush");
+        drop(sink);
+        // The first bytes of a fourth record's length prefix.
+        let mut file = OpenOptions::new().append(true).open(&path).expect("reopen");
+        file.write_all(&[0, 0, 0][..extra]).expect("write");
+        drop(file);
+
+        let items: Vec<_> = FileReader::open(&path).expect("open").collect();
+        assert_eq!(items.len(), 4, "three records and the error");
+        assert!(items[..3].iter().all(Result::is_ok));
+        assert_eq!(items[3], Err(Error::Truncated));
+        let _ = std::fs::remove_file(&path);
+    }
+}
+
+/// A writer that accepts `budget` bytes, then fails every write.
+struct FailingAfter {
+    written: Vec<u8>,
+    budget: usize,
+}
+
+impl Write for FailingAfter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if self.written.len() >= self.budget {
+            return Err(std::io::Error::other("disk full"));
+        }
+        let n = buf.len().min(self.budget - self.written.len());
+        self.written.extend_from_slice(&buf[..n]);
+        Ok(n)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn a_file_sink_refuses_to_write_after_a_torn_record() {
+    let sink = FileSink::new(FailingAfter {
+        written: Vec::new(),
+        budget: 150,
+    });
+    let mut chain = Chain::new(Sha256Hasher::new(), sink, TickClock::new(1));
+    let append = |chain: &mut Chain<_, _, _>| {
+        chain.append(
+            Actor::new("admin"),
+            Action::new("item.update"),
+            Target::new("item:1"),
+            Outcome::Success,
+        )
+    };
+    assert!(append(&mut chain).is_ok());
+    // The second record only partly fits.
+    assert_eq!(append(&mut chain), Err(Error::Sink(SinkError::Io)));
+    // Nothing more is written behind the torn record: the sink refuses
+    // before it reaches the writer (`Closed`, not the writer's `Io`).
+    assert_eq!(append(&mut chain), Err(Error::Sink(SinkError::Closed)));
+    assert_eq!(chain.flush(), Err(Error::Sink(SinkError::Closed)));
+    assert!(chain.sink_mut().flush().is_err());
+    assert_eq!(chain.next_id(), RecordId::from_u64(1));
+    let (_, sink, _) = chain.into_parts();
+    assert_eq!(sink.into_writer().written.len(), 150);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_private_file_sink_does_not_follow_a_symbolic_link() {
+    let target = temp_path("link-target");
+    let link = temp_path("link");
+    let _ = std::fs::remove_file(&target);
+    let _ = std::fs::remove_file(&link);
+    std::os::unix::fs::symlink(&target, &link).expect("symlink");
+    assert!(FileSink::open_or_create_private(&link).is_err());
+    assert!(!target.exists(), "the link's target was created");
+    let _ = std::fs::remove_file(&link);
 }

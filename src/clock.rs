@@ -64,7 +64,7 @@ pub trait Clock {
 ///
 /// Most production deployments want this; it returns nanoseconds since
 /// the Unix epoch using the host's system clock. The host clock is **not**
-/// strictly monotonic — if the operator adjusts time backwards, the next
+/// strictly monotonic - if the operator adjusts time backwards, the next
 /// [`crate::Chain::append`] will return [`crate::Error::NonMonotonicClock`].
 /// Deployments that need a strictly-monotonic source should wrap a
 /// monotonic instant in a custom [`Clock`] instead.
@@ -121,6 +121,12 @@ impl Clock for SystemClock {
 /// After resuming a chain, call [`MonotonicClock::advance_past`] with the
 /// chain's last timestamp, so the first new record is after it even if
 /// the wall clock is now behind.
+///
+/// The other side of that guarantee: a wall clock stepped far *forward*
+/// (a wrong date set by hand) is carried along. Once a record has that
+/// timestamp, later records stay after it, one nanosecond apart, until
+/// real time catches up. A chain's timestamps say records are in order,
+/// not when each was written.
 ///
 /// `Sync`: the last timestamp is one atomic word.
 ///

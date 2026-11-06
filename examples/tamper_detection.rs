@@ -61,7 +61,7 @@ fn main() {
     let mut records = build_chain();
     println!("Built {} records.", records.len());
 
-    // Clean replay first — establishes the baseline.
+    // Clean replay first - establishes the baseline.
     let mut verifier = Verifier::new(Sha256Hasher::new());
     for r in &records {
         verifier
@@ -70,7 +70,7 @@ fn main() {
     }
     println!("Clean chain verified.\n");
 
-    // Now tamper with record 2 — change "record.read" to "record.write".
+    // Now tamper with record 2 - change "record.read" to "record.write".
     println!("Tampering with record id 2 (changing action to record.write)...");
     records[2].action = String::from("record.write");
 
@@ -94,6 +94,6 @@ fn main() {
         }
     }
 
-    // Reaching here would mean tampering went undetected — the chain is broken.
+    // Reaching here would mean tampering went undetected - the chain is broken.
     println!("  CHAIN BROKEN: tampered record went undetected");
 }

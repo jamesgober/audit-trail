@@ -41,7 +41,7 @@ use crate::record::{Record, RecordId};
 ///     SinkError, Target, Timestamp, Verifier, HASH_LEN,
 /// };
 ///
-/// // XOR-fold hasher (insecure — for demonstration only).
+/// // XOR-fold hasher (insecure - for demonstration only).
 /// struct XorHasher([u8; HASH_LEN], usize);
 /// impl Hasher for XorHasher {
 ///     fn reset(&mut self) { self.0 = [0u8; HASH_LEN]; self.1 = 0; }
@@ -187,14 +187,20 @@ where
     ///
     /// # Errors
     ///
-    /// * [`Error::IdMismatch`] — record id is not the expected next id.
-    /// * [`Error::LinkMismatch`] — record's `prev_hash` does not equal the
+    /// * [`Error::IdMismatch`] - record id is not the expected next id.
+    /// * [`Error::LinkMismatch`] - record's `prev_hash` does not equal the
     ///   previous record's `hash`.
-    /// * [`Error::HashMismatch`] — record's stored `hash` does not match
+    /// * [`Error::HashMismatch`] - record's stored `hash` does not match
     ///   the digest recomputed from its fields.
-    /// * [`Error::NonMonotonicClock`] — record's timestamp is not strictly
+    /// * [`Error::InvalidFormat`] - a string field contains the byte
+    ///   `0x1f`, the hash's field separator. Its hash does not pin where
+    ///   one field ends and the next begins, so text could have been moved
+    ///   between fields; [`Chain::append`] refuses to write such a record.
+    /// * [`Error::NonMonotonicClock`] - record's timestamp is not strictly
     ///   greater than the previous record's (only when strict timestamps
     ///   are enabled).
+    ///
+    /// [`Chain::append`]: crate::Chain::append
     pub fn verify(&mut self, record: &Record<'_>) -> Result<()> {
         if record.id().as_u64() != self.next_id {
             return Err(Error::IdMismatch(record.id()));
@@ -202,6 +208,14 @@ where
 
         if record.prev_hash() != self.last_hash {
             return Err(Error::LinkMismatch(record.id()));
+        }
+
+        if canonical::has_separator(
+            record.actor().as_str(),
+            record.action().as_str(),
+            record.target().as_str(),
+        ) {
+            return Err(Error::InvalidFormat);
         }
 
         if self.strict_timestamps && self.started && record.timestamp() <= self.last_timestamp {

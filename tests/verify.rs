@@ -202,7 +202,7 @@ fn verifier_detects_broken_link() {
 fn verifier_detects_id_skip() {
     let records = build_chain();
 
-    // Skip record 1 — feed 0 then 2 directly.
+    // Skip record 1 - feed 0 then 2 directly.
     let mut verifier = Verifier::new(XorHasher::default());
     verifier.verify(&records[0].borrowed()).expect("record 0");
     let err = verifier

@@ -45,6 +45,12 @@ pub trait Sink {
     /// internal state, so a failed write leaves the chain in a clean
     /// "as-if-the-call-never-happened" state and the caller can retry.
     ///
+    /// A sink that cannot undo a partial write may instead refuse every
+    /// later write (returning [`SinkError::Closed`]); `FileSink` does,
+    /// because a record written after a torn one could not be read back.
+    ///
+    /// [`SinkError::Closed`]: crate::SinkError::Closed
+    ///
     /// [`Chain::append`]: crate::Chain::append
     /// [`Error::Sink`]: crate::Error::Sink
     fn write(&mut self, record: &Record<'_>) -> core::result::Result<(), SinkError>;

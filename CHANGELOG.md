@@ -11,6 +11,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] - 2026-11-04
+
+A security and edge-case review of the whole crate before the suites
+that use it reach 1.0. No public API change; the wire format and every
+existing hash are unchanged (pinned by a test). A minor release rather
+than a patch: appends and opens that 1.1.0 accepted are now refused (a
+field containing `0x1f`, a symbolic link, a file others can write, a
+second writer), and `libc` is a new dependency on Unix.
+
+### Security
+
+- **Field boundaries in the hash.** The hashed bytes separate fields
+  with `0x1f` but do not length-prefix them, so text containing `0x1f`
+  could be moved from one field to the next (actor `"eve\x1fadmin"`,
+  action `"x"` versus actor `"eve"`, action `"admin\x1fx"`) without
+  changing the hash. `Chain::append` now refuses a field containing
+  `0x1f` and `Verifier::verify` refuses such a record, both with
+  `Error::InvalidFormat`. A chain written before this change verifies
+  unless one of its fields holds that byte.
+- **`FileReader` allocation.** A 4-byte length prefix claiming 4 GiB
+  made the reader allocate and zero 4 GiB before reading (about 9 s on
+  the dev host). The frame buffer now grows with the bytes actually
+  read. On a 32-bit target the same prefix overflowed `4 + len` and
+  panicked.
+- **One writer per file.** Built with Rust 1.89 or later (detected by a
+  build script; the MSRV stays 1.85), `Chain::open_file` holds an
+  exclusive lock on `<path>.lock` for the chain's lifetime, so a second
+  open of the same file, in any process, fails with `Error::Io` instead
+  of interleaving two chains. In every build, a file that grows while it
+  is being verified is refused.
+- **Symbolic links and permissions.** `Chain::open_file` and
+  `FileSink::open_or_create_private` no longer follow a symbolic link at
+  the path (`O_NOFOLLOW` on Unix, so a planted link cannot make them
+  create or write another file; checked right after the open on
+  Windows), and `open_file` refuses anything but a regular file. On Unix
+  `open_file` makes an existing file that others can read owner-only,
+  and refuses one that others can write (`fchmod`/`fstat` on the open
+  handle).
+- **Writes after a torn record.** After an I/O error, `FileSink` may
+  have left part of a record in the file; a retried append landed behind
+  it, mid-file, where no repair could reach. `FileSink` now refuses
+  every write, flush and sync after its first I/O error
+  (`SinkError::Closed`); reopening with `open_file_repairing_tail` cuts
+  the torn record.
+
+### Fixed
+
+- `FileReader` ended cleanly on a file cut inside a record's 4-byte
+  length prefix; it now yields `Error::Truncated`, as `open_file` does.
+- A crash on a file system that allocates lazily can leave the end of
+  the file as zeros. `open_file` reported that as `InvalidFormat`
+  (tampering); it is now `Error::Truncated`, and
+  `open_file_repairing_tail` cuts it. Zeros followed by anything else are
+  still refused.
+- A file cut inside its 16-byte header could never be opened again; it
+  is now `Error::Truncated`, and the repairing open cuts it and writes a
+  fresh header. A short file that is not the start of a header is
+  `InvalidFormat`.
+- A second cut at the same offset failed with `Error::Io` because
+  `<path>.cut-<offset>` existed; it now goes to `<path>.cut-<offset>.<n>`.
+- The repairing open read the whole tail into memory (up to 4 GiB); it
+  now streams it to the cut file.
+
+### Changed
+
+- Durability: a created chain file's header is synced together with its
+  directory entry (Unix), by `open_file` and by both `FileSink`
+  constructors; a cut file's directory entry is synced too.
+- `open_file` decodes records in place: no allocation per record
+  (3 per record before), about 37% faster on a 10 000-record chain
+  (2.6 ms to 1.6 ms on the dev host).
+- Documentation: a "What a chain proves" section (crate docs, README,
+  `docs/API.md`) states what verification cannot see on its own (records
+  removed from the end; a rewrite by someone who can recompute unkeyed
+  hashes) and the defences (an external copy of the tail, a keyed
+  `Hasher`). `MonotonicClock` documents that it carries a clock stepped
+  far forward. The README file example uses `Chain::open_file`. The crate
+  docs no longer point at a private roadmap file.
+- `cargo clippy --all-targets --no-default-features` and `cargo test
+  --no-default-features` failed to compile the `append` and `verify`
+  benches and `tests/codec.rs`; those now require `alloc`.
+- New `benches/file.rs` (file append with and without sync, open and
+  replay of a 10 000-record chain) and `tests/alloc.rs` (allocations
+  counted per record).
+
+### Dependencies
+
+- `libc` 0.2 (Unix only, with `std`, no default features) for the
+  `O_NOFOLLOW` constant. No `unsafe` is added; the crate stays
+  `forbid(unsafe_code)`.
+
+---
+
 ## [1.1.0] - 2026-10-28
 
 Additive: opening a chain file in one verified call, owner-only files,
@@ -79,7 +172,9 @@ wire format is unchanged.
   tightened from `.dev/*` to `.dev/`. Cross-references in
   `docs/API.md` updated accordingly.
 
-[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/jamesgober/audit-trail/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/jamesgober/audit-trail/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/jamesgober/audit-trail/releases/tag/v1.0.1
 
 ---

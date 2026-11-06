@@ -14,6 +14,15 @@ use crate::owned::OwnedRecord;
 /// The format header is validated lazily on the first `next()` call. On
 /// header failure the iterator yields `Some(Err(...))` once and then
 /// `None` on every subsequent call.
+///
+/// A file that ends inside a record, including inside its 4-byte length
+/// prefix, yields [`Error::Truncated`] as its last item. Memory use is
+/// bounded by the largest record actually present, not by what a length
+/// prefix claims.
+///
+/// The reader decodes; it does not verify. Replay the records through a
+/// [`crate::Verifier`], or open the file with `Chain::open_file`, to prove
+/// the chain.
 pub struct FileReader<R: Read> {
     reader: R,
     state: State,
@@ -24,7 +33,7 @@ pub struct FileReader<R: Read> {
 enum State {
     /// Header not yet validated.
     Fresh,
-    /// Header validated successfully — reading records.
+    /// Header validated successfully - reading records.
     Reading,
     /// Iteration is terminated (either by EOF or a previous error).
     Done,
@@ -72,28 +81,48 @@ impl<R: Read> FileReader<R> {
 
     fn read_record(&mut self) -> Option<Result<OwnedRecord>> {
         let mut len_buf = [0u8; 4];
-        match self.reader.read_exact(&mut len_buf) {
-            Ok(()) => {}
-            Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => return None,
+        match read_up_to(&mut self.reader, &mut len_buf) {
+            Ok(0) => return None,
+            Ok(4) => {}
+            // The file ends inside a length prefix: a cut last record.
+            Ok(_) => return Some(Err(Error::Truncated)),
             Err(_) => return Some(Err(Error::Io)),
         }
-        let body_len = u32::from_be_bytes(len_buf) as usize;
-        let frame_len = 4 + body_len;
+        let body_len = u64::from(u32::from_be_bytes(len_buf));
         self.scratch.clear();
-        self.scratch.resize(frame_len, 0);
-        self.scratch[0..4].copy_from_slice(&len_buf);
-        if let Err(e) = self.reader.read_exact(&mut self.scratch[4..]) {
-            return Some(Err(match e.kind() {
-                io::ErrorKind::UnexpectedEof => Error::Truncated,
-                _ => Error::Io,
-            }));
+        self.scratch.extend_from_slice(&len_buf);
+        // The buffer grows with the bytes actually read, never to the
+        // claimed length up front: a corrupt or hostile prefix claiming
+        // 4 GiB costs what the file really holds.
+        match Read::by_ref(&mut self.reader)
+            .take(body_len)
+            .read_to_end(&mut self.scratch)
+        {
+            Ok(read) if read as u64 == body_len => {}
+            Ok(_) => return Some(Err(Error::Truncated)),
+            Err(_) => return Some(Err(Error::Io)),
         }
         match codec::decode_record(&self.scratch) {
-            Ok((record, consumed)) if consumed == frame_len => Some(Ok(record)),
+            Ok((record, consumed)) if consumed == self.scratch.len() => Some(Ok(record)),
             Ok(_) => Some(Err(Error::InvalidFormat)),
             Err(e) => Some(Err(e)),
         }
     }
+}
+
+/// Reads until `buf` is full or the reader ends; returns how many bytes
+/// were read (0 at a clean end).
+fn read_up_to<R: Read>(reader: &mut R, buf: &mut [u8]) -> io::Result<usize> {
+    let mut filled = 0;
+    while filled < buf.len() {
+        match reader.read(&mut buf[filled..]) {
+            Ok(0) => break,
+            Ok(n) => filled += n,
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(filled)
 }
 
 impl<R: Read> Iterator for FileReader<R> {

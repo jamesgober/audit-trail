@@ -279,3 +279,220 @@ fn monotonic_clock_advance_past_moves_it_forward() {
     assert_eq!(clock.now().as_nanos(), 1_001);
     assert_eq!(clock.now().as_nanos(), 1_002);
 }
+
+fn file_len(path: &PathBuf) -> u64 {
+    fs::metadata(path).unwrap().len()
+}
+
+fn append_bytes(path: &PathBuf, bytes: &[u8]) {
+    let mut file = OpenOptions::new().append(true).open(path).unwrap();
+    file.write_all(bytes).unwrap();
+}
+
+#[cfg(audit_trail_file_lock)]
+#[test]
+fn a_second_chain_cannot_open_a_file_that_is_open() {
+    let dir = Dir::new("lock");
+    let path = dir.file();
+    let (mut first, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+    let second = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).err();
+    assert_eq!(second, Some(Error::Io));
+    append(&mut first, 2);
+    drop(first);
+    // Released on drop.
+    let (_again, report) = Chain::open_file(&path, Sha256Hasher::new(), tick(10)).unwrap();
+    assert_eq!(report.records(), 2);
+}
+
+/// A hasher that appends to the chain file the first time it finishes a
+/// digest: another writer, while the file is being verified.
+struct Intruder {
+    inner: Sha256Hasher,
+    path: PathBuf,
+    done: bool,
+}
+
+impl audit_trail::Hasher for Intruder {
+    fn reset(&mut self) {
+        self.inner.reset();
+    }
+    fn update(&mut self, bytes: &[u8]) {
+        self.inner.update(bytes);
+    }
+    fn finalize(&mut self, out: &mut audit_trail::Digest) {
+        if !self.done {
+            self.done = true;
+            append_bytes(&self.path, b"written by someone else");
+        }
+        self.inner.finalize(out);
+    }
+}
+
+#[test]
+fn a_file_that_grows_while_it_is_verified_is_refused() {
+    let dir = Dir::new("grows");
+    let path = dir.file();
+    let (mut chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+    append(&mut chain, 2);
+    drop(chain);
+    let intruder = Intruder {
+        inner: Sha256Hasher::new(),
+        path: path.clone(),
+        done: false,
+    };
+    let error = Chain::open_file(&path, intruder, tick(10)).err();
+    assert_eq!(error, Some(Error::Io));
+}
+
+#[test]
+fn zeros_after_the_last_record_are_an_incomplete_record() {
+    let dir = Dir::new("zeros");
+    let path = dir.file();
+    let (mut chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+    append(&mut chain, 2);
+    drop(chain);
+    let good = file_len(&path);
+    // A crash where the file's new size reached the disk but its bytes did
+    // not: the end reads back as zeros.
+    append_bytes(&path, &[0u8; 120]);
+
+    let error = Chain::open_file(&path, Sha256Hasher::new(), tick(10)).err();
+    assert_eq!(error, Some(Error::Truncated));
+    let (mut chain, report) =
+        Chain::open_file_repairing_tail(&path, Sha256Hasher::new(), tick(10)).unwrap();
+    assert_eq!(report.records(), 2);
+    assert_eq!(report.cut().map(|(bytes, _)| bytes), Some(120));
+    assert_eq!(file_len(&path), good);
+    append(&mut chain, 1);
+    drop(chain);
+    assert_eq!(verify_all(&path), 3);
+}
+
+#[test]
+fn zeros_followed_by_other_bytes_are_not_an_incomplete_record() {
+    let dir = Dir::new("zeros-data");
+    let path = dir.file();
+    let (mut chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+    append(&mut chain, 2);
+    drop(chain);
+    let mut tail = vec![0u8; 120];
+    tail[100] = 1;
+    append_bytes(&path, &tail);
+    let error = Chain::open_file_repairing_tail(&path, Sha256Hasher::new(), tick(10)).err();
+    assert_eq!(error, Some(Error::InvalidFormat));
+}
+
+#[test]
+fn a_file_cut_inside_its_header_can_be_repaired() {
+    for kept in [3_usize, 9, 15] {
+        let dir = Dir::new("header-cut");
+        let path = dir.file();
+        let (chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+        drop(chain);
+        let header = fs::read(&path).unwrap();
+        fs::write(&path, &header[..kept]).unwrap();
+
+        let error = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).err();
+        assert_eq!(error, Some(Error::Truncated));
+        let (mut chain, report) =
+            Chain::open_file_repairing_tail(&path, Sha256Hasher::new(), tick(1)).unwrap();
+        assert_eq!(report.records(), 0);
+        assert_eq!(report.cut().map(|(bytes, _)| bytes), Some(kept as u64));
+        append(&mut chain, 2);
+        drop(chain);
+        assert_eq!(verify_all(&path), 2);
+    }
+}
+
+#[test]
+fn a_short_file_that_is_not_a_header_is_invalid() {
+    let dir = Dir::new("short");
+    let path = dir.file();
+    fs::write(&path, b"NOTAUD").unwrap();
+    let error = Chain::open_file_repairing_tail(&path, Sha256Hasher::new(), tick(1)).err();
+    assert_eq!(error, Some(Error::InvalidFormat));
+}
+
+#[test]
+fn a_second_cut_at_the_same_offset_keeps_the_first() {
+    let dir = Dir::new("cut-twice");
+    let path = dir.file();
+    let (mut chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+    append(&mut chain, 1);
+    drop(chain);
+
+    append_bytes(&path, &[0, 0, 1, 7, 1]);
+    let (chain, first) =
+        Chain::open_file_repairing_tail(&path, Sha256Hasher::new(), tick(10)).unwrap();
+    drop(chain);
+    append_bytes(&path, &[0, 0, 1, 7, 2, 2]);
+    let (chain, second) =
+        Chain::open_file_repairing_tail(&path, Sha256Hasher::new(), tick(10)).unwrap();
+    drop(chain);
+
+    let (_, first_path) = first.cut().unwrap();
+    let (_, second_path) = second.cut().unwrap();
+    assert_ne!(first_path, second_path);
+    assert_eq!(fs::read(first_path).unwrap(), vec![0, 0, 1, 7, 1]);
+    assert_eq!(fs::read(second_path).unwrap(), vec![0, 0, 1, 7, 2, 2]);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_symbolic_link_is_not_followed() {
+    let dir = Dir::new("symlink");
+    let target = dir.0.join("elsewhere");
+    let link = dir.file();
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+    let error = Chain::open_file(&link, Sha256Hasher::new(), tick(1)).err();
+    assert_eq!(error, Some(Error::Io));
+    assert!(!target.exists(), "the target of the link was created");
+}
+
+#[cfg(windows)]
+#[test]
+fn a_symbolic_link_is_refused() {
+    let dir = Dir::new("symlink");
+    let target = dir.0.join("elsewhere");
+    fs::write(&target, b"").unwrap();
+    let link = dir.file();
+    // Creating a link needs a privilege (or developer mode) on Windows.
+    if std::os::windows::fs::symlink_file(&target, &link).is_err() {
+        return;
+    }
+    let error = Chain::open_file(&link, Sha256Hasher::new(), tick(1)).err();
+    assert_eq!(error, Some(Error::Io));
+}
+
+#[test]
+fn a_directory_is_refused() {
+    let dir = Dir::new("directory");
+    let path = dir.file();
+    fs::create_dir(&path).unwrap();
+    let error = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).err();
+    assert_eq!(error, Some(Error::Io));
+}
+
+#[cfg(unix)]
+#[test]
+fn an_existing_file_is_made_owner_only_or_refused_when_others_can_write() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let dir = Dir::new("perms");
+    let path = dir.file();
+    let (mut chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(1)).unwrap();
+    append(&mut chain, 1);
+    drop(chain);
+
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+    let (chain, _report) = Chain::open_file(&path, Sha256Hasher::new(), tick(10)).unwrap();
+    drop(chain);
+    let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+
+    for loose in [0o620, 0o602, 0o666] {
+        fs::set_permissions(&path, fs::Permissions::from_mode(loose)).unwrap();
+        let error = Chain::open_file(&path, Sha256Hasher::new(), tick(10)).err();
+        assert_eq!(error, Some(Error::Io), "mode {loose:o}");
+    }
+}

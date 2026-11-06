@@ -54,23 +54,42 @@ for r in sink.records() {
 ### Persisting to a file
 
 ```rust
-use audit_trail::{Chain, FileSink, FileReader, Sha256Hasher, SystemClock, Verifier};
+use audit_trail::{
+    Action, Actor, Chain, MonotonicClock, Outcome, Sha256Hasher, SystemClock, Target,
+};
 
-let sink = FileSink::open_or_create("audit.log").expect("open");
-let mut chain = Chain::new(Sha256Hasher::new(), sink, SystemClock::new());
-// ... chain.append(...) ...
+// Create the file, or open it and verify every record in it.
+let clock = MonotonicClock::new(SystemClock::new());
+let (mut chain, report) =
+    Chain::open_file("audit.log", Sha256Hasher::new(), clock).expect("open and verify");
+chain.clock().advance_past(chain.last_timestamp());
+println!("{} records verified", report.records());
 
-// Replay and verify the on-disk log.
-let mut verifier = Verifier::new(Sha256Hasher::new());
-for record in FileReader::open("audit.log").expect("open") {
-    let r = record.expect("decode");
-    verifier.verify(&r.as_record()).expect("verify");
-}
+chain.append(
+    Actor::new("user-42"),
+    Action::new("user.login"),
+    Target::new("session:a"),
+    Outcome::Success,
+).expect("append");
+chain.sink_mut().sync().expect("sync"); // on disk now
 ```
 
-`FileSink` writes a versioned 16-byte header on a fresh file, then
-length-prefixed records using the stable [`codec`] encoding. Reopening
-the same path appends after validating the header.
+`Chain::open_file` creates the file owner-only (Unix), refuses a symbolic
+link or a file others can write, locks it against a second writer (when
+built with Rust 1.89 or later), and tells a crash-cut last record
+(`Error::Truncated`, repairable with `open_file_repairing_tail`) apart from
+tampering. The file holds a versioned 16-byte header, then
+length-prefixed records in the stable [`codec`] encoding; `FileReader`
+streams them back.
+
+### What a chain proves
+
+Verification proves that every record read is the one the chain
+appended, in order. On its own it cannot see records removed from the
+*end*, or a file rewritten by someone able to recompute the (unkeyed)
+hashes. Keep the tail (`chain.next_id()`, `chain.last_hash()`) somewhere
+the file's writer cannot change and compare it on open, or plug in a
+keyed `Hasher`. See [docs/API.md](docs/API.md#what-a-chain-proves).
 
 ### Features
 
@@ -94,14 +113,14 @@ cargo run --example file_log --features sha2
 cargo run --example tamper_detection --features sha2
 ```
 
-- [`examples/in_memory.rs`](examples/in_memory.rs) — build a SHA-256 chain in memory, print it, verify it.
-- [`examples/file_log.rs`](examples/file_log.rs) — write a chain to a file with `FileSink`, replay it with `FileReader`.
-- [`examples/tamper_detection.rs`](examples/tamper_detection.rs) — build a chain, mutate one record, see the `Verifier` reject it with the exact failing `RecordId`.
+- [`examples/in_memory.rs`](examples/in_memory.rs) - build a SHA-256 chain in memory, print it, verify it.
+- [`examples/file_log.rs`](examples/file_log.rs) - write a chain to a file with `FileSink`, replay it with `FileReader`.
+- [`examples/tamper_detection.rs`](examples/tamper_detection.rs) - build a chain, mutate one record, see the `Verifier` reject it with the exact failing `RecordId`.
 
 ### Documentation
 
-- [`docs/API.md`](docs/API.md) — full public API reference: every type, trait, function, with descriptions and code examples.
-- [docs.rs/audit-trail](https://docs.rs/audit-trail) — generated rustdoc.
+- [`docs/API.md`](docs/API.md) - full public API reference: every type, trait, function, with descriptions and code examples.
+- [docs.rs/audit-trail](https://docs.rs/audit-trail) - generated rustdoc.
 
 ### Benchmarks
 
@@ -111,8 +130,8 @@ cargo bench --features sha2,blake3
 
 Two suites are provided:
 
-- `benches/append.rs` — chain append throughput per hasher (XOR / SHA-256 / BLAKE3).
-- `benches/verify.rs` — 1 000-record chain replay through `Verifier`.
+- `benches/append.rs` - chain append throughput per hasher (XOR / SHA-256 / BLAKE3).
+- `benches/verify.rs` - 1 000-record chain replay through `Verifier`.
 
 ---
 

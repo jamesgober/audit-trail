@@ -11,7 +11,7 @@ use audit_trail::{
     SinkError, Target, Timestamp,
 };
 
-/// XOR-fold "hasher" — collisions are trivial, but it is deterministic and
+/// XOR-fold "hasher" - collisions are trivial, but it is deterministic and
 /// 32-bytes wide, which is sufficient for exercising the chain machinery.
 #[derive(Default)]
 struct XorHasher {

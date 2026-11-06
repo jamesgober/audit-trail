@@ -3,7 +3,7 @@
 //!
 //! Centralising the encoding here guarantees that the producer (the
 //! `Chain`) and the consumer (the `Verifier`) never drift apart. The byte
-//! layout is **stable** — changing it is a breaking change to the on-disk
+//! layout is **stable** - changing it is a breaking change to the on-disk
 //! hash, even if no public API changes.
 
 use crate::hash::{Digest, Hasher};
@@ -11,18 +11,34 @@ use crate::record::Record;
 
 /// Stable separator byte mixed between hashed fields to prevent
 /// concatenation-collision ambiguity (e.g. `"ab" + "c"` vs `"a" + "bc"`).
+///
+/// The separator only keeps field boundaries unambiguous while no string
+/// field contains it: `"a\x1fb" + "c"` and `"a" + "b\x1fc"` hash the same.
+/// [`crate::Chain::append`] therefore refuses such a field and
+/// [`crate::Verifier::verify`] refuses such a record (see
+/// [`has_separator`]).
 pub(crate) const FIELD_SEP: u8 = 0x1f;
+
+/// Whether any string field of the record contains [`FIELD_SEP`], which
+/// would let text move from one field to the next without changing the
+/// hash.
+#[inline]
+pub(crate) fn has_separator(actor: &str, action: &str, target: &str) -> bool {
+    [actor, action, target]
+        .iter()
+        .any(|field| field.as_bytes().contains(&FIELD_SEP))
+}
 
 /// Feed a record's canonical bytes through `hasher` and return the digest.
 ///
 /// The record's own `hash` field is intentionally **not** part of the
-/// input — it is the *output* of this function. The `prev_hash` field is
+/// input; it is the *output* of this function. The `prev_hash` field is
 /// part of the input, which is what links records into a chain.
 ///
 /// Field order (each separated by [`FIELD_SEP`]):
-/// `id` (`u64` big-endian) → `timestamp` (`u64` big-endian nanos) →
-/// `actor` (UTF-8) → `action` (UTF-8) → `target` (UTF-8) →
-/// `outcome` (`u8`) → `prev_hash` (32 bytes).
+/// `id` (`u64` big-endian), `timestamp` (`u64` big-endian nanos),
+/// `actor` (UTF-8), `action` (UTF-8), `target` (UTF-8),
+/// `outcome` (`u8`), `prev_hash` (32 bytes).
 pub(crate) fn compute<H: Hasher>(hasher: &mut H, record: &Record<'_>) -> Digest {
     hasher.reset();
     hasher.update(&record.id().as_u64().to_be_bytes());

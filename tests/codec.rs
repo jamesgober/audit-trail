@@ -2,6 +2,8 @@
 //! `decode_record`, validate file-header round-trip, and exercise the
 //! error paths (truncated input, bad magic, bad version, bad UTF-8).
 
+#![cfg(feature = "alloc")]
+
 use audit_trail::codec::{
     self, FILE_HEADER_LEN, FORMAT_MAGIC, FORMAT_VERSION, decode_record, encode_record,
     verify_file_header, write_file_header,

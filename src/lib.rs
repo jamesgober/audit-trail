@@ -9,31 +9,31 @@
 //!
 //! ## Public surface
 //!
-//! - [`Record`] — the audited event (5W + chain links).
-//! - [`Chain`] — the append-only chain that wires a [`Hasher`], a [`Sink`],
+//! - [`Record`] - the audited event (5W + chain links).
+//! - [`Chain`] - the append-only chain that wires a [`Hasher`], a [`Sink`],
 //!   and a [`Clock`].
-//! - [`Hasher`] — pluggable hash function (SHA-256, BLAKE3, …).
-//! - [`Sink`] — pluggable backend that persists each record.
-//! - [`Clock`] — pluggable time source.
-//! - [`Verifier`] — replays a chain and proves it is untampered.
-//! - [`codec`] — stable binary record encoding (`alloc` feature).
-//! - [`FileSink`] / [`FileReader`] — append-only file persistence
+//! - [`Hasher`] - pluggable hash function (SHA-256, BLAKE3, …).
+//! - [`Sink`] - pluggable backend that persists each record.
+//! - [`Clock`] - pluggable time source.
+//! - [`Verifier`] - replays a chain and proves it is untampered.
+//! - [`codec`] - stable binary record encoding (`alloc` feature).
+//! - [`FileSink`] / [`FileReader`] - append-only file persistence
 //!   (`std` feature).
 //!
 //! ## Optional features
 //!
-//! - `std` (default) — enables `std`-dependent items ([`FileSink`],
+//! - `std` (default) - enables `std`-dependent items ([`FileSink`],
 //!   [`FileReader`]) and `std::error::Error` impls. Implies `alloc`.
-//! - `alloc` — enables owned-record and in-memory sink types
+//! - `alloc` - enables owned-record and in-memory sink types
 //!   ([`OwnedRecord`], [`MemorySink`]) plus the [`codec`] module for
 //!   serialising records to bytes.
-//! - `sha2` — enables the reference `Sha256Hasher` backed by the `sha2`
+//! - `sha2` - enables the reference `Sha256Hasher` backed by the `sha2`
 //!   crate.
-//! - `blake3` — enables the reference `Blake3Hasher` backed by the
+//! - `blake3` - enables the reference `Blake3Hasher` backed by the
 //!   `blake3` crate.
 //!
 //! Without any optional features, the crate ships traits, the `Chain`,
-//! and the `Verifier` only — callers supply their own hasher, sink, and
+//! and the `Verifier` only - callers supply their own hasher, sink, and
 //! clock.
 //!
 //! ## Design principles
@@ -43,7 +43,27 @@
 //! - **No async runtime dependency.** The append API is synchronous.
 //! - **`no_std` capable.** Enable with `default-features = false`.
 //!
-//! See `.dev/ROADMAP.md` for the path to 1.0.
+//! ## What a chain proves
+//!
+//! Verifying a chain (with a [`Verifier`], or `Chain::open_file`) proves
+//! that every record it read is the one the chain appended, in order: a
+//! changed, inserted, removed or reordered record fails verification at
+//! that record, and so does a record whose text was moved from one field
+//! to the next.
+//!
+//! It does not prove, on its own:
+//!
+//! - **that nothing was removed from the end.** A chain cut after any
+//!   record still verifies. Keep the tail ([`Chain::next_id`],
+//!   [`Chain::last_hash`]) somewhere the file's writer cannot change, and
+//!   compare it after opening.
+//! - **that the file was not rewritten.** The hashes are not keyed: anyone
+//!   who can write the file can rebuild the chain from any record onward,
+//!   or swap in another valid chain. The same copy of the tail detects
+//!   that; so does a [`Hasher`] keyed with a secret held apart from the
+//!   file (BLAKE3's keyed mode, HMAC-SHA-256).
+//! - **when a record was written.** Timestamps come from the chain's
+//!   [`Clock`] and are checked only to increase.
 //!
 //! ## License
 //!

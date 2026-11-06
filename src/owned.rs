@@ -2,9 +2,9 @@
 //!
 //! [`Record`] is intentionally borrowed: its string fields hold `&str`
 //! references into caller memory so the append hot path costs nothing on
-//! the heap. Once a record leaves the append path — when a sink wants to
+//! the heap. Once a record leaves the append path - when a sink wants to
 //! retain it, when a verifier reads it back, when a test mutates it for a
-//! tampering scenario — it needs to own its bytes. [`OwnedRecord`] is that
+//! tampering scenario - it needs to own its bytes. [`OwnedRecord`] is that
 //! owned form.
 //!
 //! Requires the `alloc` feature.

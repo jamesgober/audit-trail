@@ -2,12 +2,12 @@
 //!
 //! Three configurations exercise different cost profiles:
 //!
-//! * `append_xor` — chain with the deliberately-trivial XOR hasher.
+//! * `append_xor` - chain with the deliberately-trivial XOR hasher.
 //!   Measures the *non-hash* overhead of `Chain::append` (canonical
 //!   encoding, sink dispatch, state update).
-//! * `append_sha2` — same chain with `Sha256Hasher`. Requires the
+//! * `append_sha2` - same chain with `Sha256Hasher`. Requires the
 //!   `sha2` feature.
-//! * `append_blake3` — same chain with `Blake3Hasher`. Requires the
+//! * `append_blake3` - same chain with `Blake3Hasher`. Requires the
 //!   `blake3` feature.
 //!
 //! Run with `cargo bench --bench append --features sha2,blake3`.

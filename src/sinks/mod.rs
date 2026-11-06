@@ -1,7 +1,7 @@
 //! Reference [`Sink`] implementations.
 //!
-//! - [`MemorySink`] — in-memory, requires `alloc`.
-//! - [`FileSink`] — append-only file writer, requires `std`.
+//! - [`MemorySink`] - in-memory, requires `alloc`.
+//! - [`FileSink`] - append-only file writer, requires `std`.
 //!
 //! [`Sink`]: crate::Sink
 

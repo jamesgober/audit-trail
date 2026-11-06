@@ -23,9 +23,9 @@ use crate::sink::Sink;
 ///
 /// The chain is generic over its three pluggable components:
 ///
-/// * `H: Hasher` — the cryptographic hash function used to link records.
-/// * `S: Sink` — the backend that persists each record.
-/// * `C: Clock` — the time source.
+/// * `H: Hasher` - the cryptographic hash function used to link records.
+/// * `S: Sink` - the backend that persists each record.
+/// * `C: Clock` - the time source.
 ///
 /// `Chain` is `!Sync` by virtue of holding mutable state on `&mut self`.
 /// Concurrent appenders should serialize on the chain or shard their writes
@@ -173,10 +173,16 @@ where
     ///
     /// # Errors
     ///
-    /// * [`Error::NonMonotonicClock`] — the clock returned a timestamp not
+    /// * [`Error::InvalidFormat`] - `actor`, `action` or `target` contains
+    ///   the byte `0x1f` (U+001F, the unit separator). The hash separates
+    ///   fields with that byte, so text containing it could be moved from
+    ///   one field to the next without changing the hash; such a field is
+    ///   refused rather than recorded ambiguously. Checked before the
+    ///   clock is read.
+    /// * [`Error::NonMonotonicClock`] - the clock returned a timestamp not
     ///   greater than the previously stored timestamp.
-    /// * [`Error::Capacity`] — the record id counter would overflow.
-    /// * [`Error::Sink`] — the sink rejected the write.
+    /// * [`Error::Capacity`] - the record id counter would overflow.
+    /// * [`Error::Sink`] - the sink rejected the write.
     pub fn append(
         &mut self,
         actor: Actor<'_>,
@@ -184,6 +190,9 @@ where
         target: Target<'_>,
         outcome: Outcome,
     ) -> Result<RecordId> {
+        if canonical::has_separator(actor.as_str(), action.as_str(), target.as_str()) {
+            return Err(Error::InvalidFormat);
+        }
         let timestamp = self.clock.now();
         if self.next_id > 0 && timestamp <= self.last_timestamp {
             return Err(Error::NonMonotonicClock);

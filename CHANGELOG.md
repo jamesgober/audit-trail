@@ -164,13 +164,9 @@ wire format is unchanged.
 ### Changed
 
 - Crate version bumped to `1.0.1`.
-- Repository restructure: moved `.dev/release/` → `docs/releases/`
-  and `.dev/benchmarks/` → `docs/benchmarks/` via `git mv` (history
-  preserved). Untracked the remaining internal `.dev/` files
-  (`ROADMAP.md`, `PROMPT.md`, `DIRECTIVES.md`) — they stay local but
-  no longer appear on the public repo. `.gitignore` pattern
-  tightened from `.dev/*` to `.dev/`. Cross-references in
-  `docs/API.md` updated accordingly.
+- Repository restructure: release notes moved to `docs/releases/`
+  and benchmark baselines to `docs/benchmarks/` via `git mv` (history
+  preserved). Cross-references in `docs/API.md` updated accordingly.
 
 [Unreleased]: https://github.com/jamesgober/audit-trail/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/jamesgober/audit-trail/compare/v1.1.0...v1.2.0
@@ -223,7 +219,7 @@ existing public item changed signature, was renamed, or was removed.
 - `src/record.rs` lib unit tests: `RecordId::GENESIS`,
   `Outcome::as_u8` stable encoding, `Record` accessor round-trip,
   `Record::with_hash` field-swap invariant. 4 new tests.
-- `.dev/benchmarks/v0.9.0-baseline.md` — captured `append` and
+- `docs/benchmarks/v0.9.0-baseline.md` — captured `append` and
   `verify` numbers across all three reference hashers (XOR baseline,
   Sha256, Blake3) on the dev host. Future releases compare against
   this baseline for regression detection.
